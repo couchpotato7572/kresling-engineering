@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.npz
+test_output.jsonl
+.env
+.env.*
+.DS_Store

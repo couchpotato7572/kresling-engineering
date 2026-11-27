@@ -1,0 +1,261 @@
+[
+  {
+    "case": "basic",
+    "faces": 12,
+    "hinges": 11,
+    "max_distance_error_mm": 3.197442310920451e-14,
+    "max_trimmed_panel_error_mm": 2.842170943040401e-14,
+    "folded": {
+      "volume_mm3": 5822.183481166222,
+      "minimum_hinge_length_mm": 20.551836937757493,
+      "solid_components": 1
+    },
+    "net": {
+      "volume_mm3": 5807.431854239553,
+      "minimum_hinge_length_mm": 20.55183693775747,
+      "solid_components": 1
+    },
+    "result": "PASS"
+  },
+  {
+    "case": "extended",
+    "faces": 36,
+    "hinges": 45,
+    "max_distance_error_mm": 3.197442310920451e-14,
+    "max_trimmed_panel_error_mm": 4.263256414560601e-14,
+    "folded": {
+      "volume_mm3": 16989.66489414561,
+      "minimum_hinge_length_mm": 20.551836937757454,
+      "solid_components": 1
+    },
+    "net": {
+      "volume_mm3": 16951.690509211217,
+      "minimum_hinge_length_mm": 20.55183693775747,
+      "solid_components": 1
+    },
+    "result": "PASS"
+  },
+  {
+    "case": "alternating",
+    "faces": 36,
+    "hinges": 45,
+    "max_distance_error_mm": 3.197442310920451e-14,
+    "max_trimmed_panel_error_mm": 3.907985046680551e-14,
+    "folded": {
+      "volume_mm3": 17010.15070693199,
+      "minimum_hinge_length_mm": 20.551836937757464,
+      "solid_components": 1
+    },
+    "net": {
+      "volume_mm3": 16973.023889757667,
+      "minimum_hinge_length_mm": 20.551836937757372,
+      "solid_components": 1
+    },
+    "result": "PASS"
+  },
+  {
+    "case": "tapered",
+    "faces": 36,
+    "hinges": 35,
+    "max_distance_error_mm": 3.907985046680551e-14,
+    "max_trimmed_panel_error_mm": 4.618527782440651e-14,
+    "folded": {
+      "volume_mm3": 14548.94160679256,
+      "minimum_hinge_length_mm": 16.728722433793116,
+      "solid_components": 1
+    },
+    "net": {
+      "volume_mm3": 14519.016270798804,
+      "minimum_hinge_length_mm": 16.728722433793077,
+      "solid_components": 1
+    },
+    "result": "PASS"
+  },
+  {
+    "case": "progressive_offset",
+    "faces": 36,
+    "hinges": 35,
+    "max_distance_error_mm": 3.907985046680551e-14,
+    "max_trimmed_panel_error_mm": 5.3290705182007514e-14,
+    "folded": {
+      "volume_mm3": 15570.692344679419,
+      "minimum_hinge_length_mm": 18.783987796966017,
+      "solid_components": 1
+    },
+    "net": {
+      "volume_mm3": 15535.104150143412,
+      "minimum_hinge_length_mm": 18.783987796966045,
+      "solid_components": 1
+    },
+    "result": "PASS"
+  },
+  {
+    "case": "clockwise",
+    "faces": 12,
+    "hinges": 11,
+    "max_distance_error_mm": 3.197442310920451e-14,
+    "max_trimmed_panel_error_mm": 3.907985046680551e-14,
+    "folded": {
+      "volume_mm3": 5822.183481166222,
+      "minimum_hinge_length_mm": 20.551836937757507,
+      "solid_components": 1
+    },
+    "net": {
+      "volume_mm3": 5807.431854239554,
+      "minimum_hinge_length_mm": 20.55183693775747,
+      "solid_components": 1
+    },
+    "result": "PASS"
+  },
+  {
+    "case": "caps_holes_ribs",
+    "faces": 14,
+    "hinges": 13,
+    "max_distance_error_mm": 3.197442310920451e-14,
+    "max_trimmed_panel_error_mm": 2.842170943040401e-14,
+    "folded": {
+      "volume_mm3": 13963.451542597446,
+      "minimum_hinge_length_mm": 20.544639878846443,
+      "solid_components": 1
+    },
+    "net": {
+      "volume_mm3": 13959.624176045252,
+      "minimum_hinge_length_mm": 20.54463987884642,
+      "solid_components": 1
+    },
+    "result": "PASS"
+  },
+  {
+    "case": "compressed_redesign",
+    "faces": 12,
+    "hinges": 11,
+    "max_distance_error_mm": 2.1316282072803006e-14,
+    "max_trimmed_panel_error_mm": 2.4868995751603507e-14,
+    "folded": {
+      "volume_mm3": 4640.055283042471,
+      "minimum_hinge_length_mm": 15.640813330608168,
+      "solid_components": 1
+    },
+    "net": {
+      "volume_mm3": 4619.669476674619,
+      "minimum_hinge_length_mm": 15.640813330608154,
+      "solid_components": 1
+    },
+    "result": "PASS"
+  },
+  {
+    "case": "custom_schedule",
+    "faces": 36,
+    "hinges": 35,
+    "max_distance_error_mm": 2.842170943040401e-14,
+    "max_trimmed_panel_error_mm": 4.263256414560601e-14,
+    "folded": {
+      "volume_mm3": 15386.036824825256,
+      "minimum_hinge_length_mm": 20.193873518092996,
+      "solid_components": 1
+    },
+    "net": {
+      "volume_mm3": 15421.117466408527,
+      "minimum_hinge_length_mm": 20.193873518092985,
+      "solid_components": 1
+    },
+    "result": "PASS"
+  },
+  {
+    "case": "custom_overlap_rejection",
+    "result": "EXPECTED_REJECT",
+    "reason": "net overlaps 15,4"
+  },
+  {
+    "case": "rounded_panels",
+    "faces": 12,
+    "hinges": 11,
+    "max_distance_error_mm": 3.197442310920451e-14,
+    "max_trimmed_panel_error_mm": 2.842170943040401e-14,
+    "folded": {
+      "volume_mm3": 5809.888204828693,
+      "minimum_hinge_length_mm": 19.586934039336363,
+      "solid_components": 1
+    },
+    "net": {
+      "volume_mm3": 5795.202558560959,
+      "minimum_hinge_length_mm": 19.586934039336338,
+      "solid_components": 1
+    },
+    "result": "PASS"
+  },
+  {
+    "case": "slotted_tabs",
+    "faces": 12,
+    "hinges": 11,
+    "max_distance_error_mm": 3.197442310920451e-14,
+    "max_trimmed_panel_error_mm": 2.842170943040401e-14,
+    "folded": {
+      "volume_mm3": 6148.583481051779,
+      "minimum_hinge_length_mm": 20.551836937757493,
+      "solid_components": 1
+    },
+    "net": {
+      "volume_mm3": 6133.831854125113,
+      "minimum_hinge_length_mm": 20.55183693775747,
+      "solid_components": 1
+    },
+    "result": "PASS"
+  },
+  {
+    "case": "inverted_hinges",
+    "faces": 12,
+    "hinges": 11,
+    "max_distance_error_mm": 3.197442310920451e-14,
+    "max_trimmed_panel_error_mm": 2.842170943040401e-14,
+    "folded": {
+      "volume_mm3": 5735.278818436246,
+      "minimum_hinge_length_mm": 20.551836937757493,
+      "solid_components": 1
+    },
+    "net": {
+      "volume_mm3": 5807.431854239553,
+      "minimum_hinge_length_mm": 20.55183693775747,
+      "solid_components": 1
+    },
+    "result": "PASS"
+  },
+  {
+    "case": "seam_changed",
+    "faces": 24,
+    "hinges": 28,
+    "max_distance_error_mm": 2.842170943040401e-14,
+    "max_trimmed_panel_error_mm": 2.842170943040401e-14,
+    "folded": {
+      "volume_mm3": 11405.924187655914,
+      "minimum_hinge_length_mm": 20.551836937757457,
+      "solid_components": 1
+    },
+    "net": {
+      "volume_mm3": 11379.561181725387,
+      "minimum_hinge_length_mm": 20.551836937757443,
+      "solid_components": 1
+    },
+    "result": "PASS"
+  },
+  {
+    "case": "twist_too_large",
+    "result": "EXPECTED_REJECT",
+    "reason": "twist range"
+  },
+  {
+    "case": "offset_too_large",
+    "result": "EXPECTED_REJECT",
+    "reason": "offset range"
+  },
+  {
+    "case": "collapsed_inset",
+    "result": "EXPECTED_REJECT",
+    "reason": "collapsed inset"
+  },
+  {
+    "case": "excess_compression",
+    "result": "EXPECTED_REJECT",
+    "reason": "compressed height"
+  }
+]
