@@ -60,6 +60,116 @@ export enum KHinge
     DEPTH
 }
 
+export enum KManufacturing
+{
+    annotation { "Name" : "Single material" }
+    SINGLE,
+    annotation { "Name" : "PLA panels + TPU hinges" }
+    MULTI,
+    annotation { "Name" : "PLA + TPU + slicer modifiers" }
+    MULTI_MODIFIERS,
+    annotation { "Name" : "Independent single-material modules" }
+    MODULAR
+}
+
+export enum KCreaseSelection
+{
+    annotation { "Name" : "All retained creases" }
+    ALL,
+    annotation { "Name" : "Mountain folds" }
+    MOUNTAIN,
+    annotation { "Name" : "Valley folds" }
+    VALLEY,
+    annotation { "Name" : "Diagonal panel creases" }
+    DIAGONAL,
+    annotation { "Name" : "Axial panel creases" }
+    AXIAL,
+    annotation { "Name" : "Section boundaries" }
+    SECTION
+}
+
+export enum KWebProfile
+{
+    annotation { "Name" : "Continuous strip per crease" }
+    CONTINUOUS,
+    annotation { "Name" : "Individual anchored segments" }
+    SEGMENTED
+}
+
+export enum KAnchorProfile
+{
+    annotation { "Name" : "Round captive through-rivets" }
+    RIVET,
+    annotation { "Name" : "Captive rectangular beam keys" }
+    BEAM_KEY
+}
+
+export enum KSeamConnection
+{
+    annotation { "Name" : "Open seam" }
+    OPEN,
+    annotation { "Name" : "Rounded eyelets for post-print lacing" }
+    LACING
+}
+
+export enum KSectionConnection
+{
+    annotation { "Name" : "Independent modules" }
+    INDEPENDENT,
+    annotation { "Name" : "Rounded eyelets for section lacing" }
+    LACING
+}
+
+export enum KModuleLayout
+{
+    annotation { "Name" : "Keep assembled coordinates" }
+    ASSEMBLED,
+    annotation { "Name" : "Spaced net print layout" }
+    SPACED
+}
+
+// Defaults also preserve regeneration of instances saved before these controls existed.
+const K_MANUFACTURING_DEFAULTS = {
+    "manufacturingMode" : KManufacturing.SINGLE,
+    "modifierEnabled" : false,
+    "modifierOnly" : false,
+    "modifierSelection" : KCreaseSelection.ALL,
+    "modifierWidth" : 8 * millimeter,
+    "modifierHeight" : 0.4 * millimeter,
+    "modifierDepth" : 1.2 * millimeter,
+    "modifierOffset" : 0 * millimeter,
+    "tpuSelection" : KCreaseSelection.ALL,
+    "foldSpecific" : false,
+    "mountainWebT" : 0.4 * millimeter,
+    "valleyWebT" : 0.4 * millimeter,
+    "mountainSpan" : 1.6 * millimeter,
+    "valleySpan" : 1.6 * millimeter,
+    "webProfile" : KWebProfile.CONTINUOUS,
+    "segmentLength" : 4 * millimeter,
+    "anchorProfile" : KAnchorProfile.RIVET,
+    "anchorShaftD" : 1.6 * millimeter,
+    "anchorHeadD" : 2.6 * millimeter,
+    "anchorHeadH" : 0.4 * millimeter,
+    "anchorEngagement" : 2.2 * millimeter,
+    "anchorBeamW" : 1.2 * millimeter,
+    "anchorMinPitch" : 5 * millimeter,
+    "anchorCount" : 2,
+    "anchorLigament" : 0.6 * millimeter,
+    "seamConnection" : KSeamConnection.OPEN,
+    "seamEyeletW" : 5 * millimeter,
+    "seamEyeletDepth" : 5 * millimeter,
+    "seamEyeletHoleD" : 2 * millimeter,
+    "seamEyeletCount" : 1,
+    "projectEyeletTabs" : false,
+    "eyeletCollarHeight" : 0.4 * millimeter,
+    "sectionConnection" : KSectionConnection.INDEPENDENT,
+    "moduleLayout" : KModuleLayout.SPACED,
+    "moduleSpacing" : 14 * millimeter,
+    "limitCreases" : false,
+    "creaseIndices" : [],
+    "colorManufacturingRoles" : true
+};
+
 annotation { "Feature Type Name" : "Kresling Engineering",
     "Feature Type Description" : "Faceted design states and exact cut nets; not a rigid-folding simulation" }
 export const kreslingEngineering = defineFeature(function(context is Context, id is Id, definition is map)
@@ -250,8 +360,154 @@ precondition
             }
         }
     }
+    annotation { "Group Name" : "Manufacturing and Connections", "Collapsed By Default" : true }
+    {
+    annotation { "Group Name" : "Manufacturing Mode", "Collapsed By Default" : true }
+    {
+        annotation { "Name" : "Material construction", "Default" : KManufacturing.SINGLE }
+        definition.manufacturingMode is KManufacturing;
+    }
+    annotation { "Group Name" : "Crease Modifier Bodies", "Collapsed By Default" : true }
+    {
+        if (definition.manufacturingMode != KManufacturing.MULTI_MODIFIERS)
+        {
+        annotation { "Name" : "Generate slicer-only modifiers", "Default" : false }
+        definition.modifierEnabled is boolean;
+        }
+        if (definition.manufacturingMode == KManufacturing.MULTI_MODIFIERS || definition.modifierEnabled)
+        {
+        annotation { "Name" : "Modifier crease types", "Default" : KCreaseSelection.ALL }
+        definition.modifierSelection is KCreaseSelection;
+        annotation { "Name" : "Modifier width across crease" }
+        isLength(definition.modifierWidth, { (millimeter) : [1, 8, 30] } as LengthBoundSpec);
+        annotation { "Name" : "Modifier height above inner reference" }
+        isLength(definition.modifierHeight, { (millimeter) : [0.1, 0.4, 10] } as LengthBoundSpec);
+        annotation { "Name" : "Modifier penetration from inner reference" }
+        isLength(definition.modifierDepth, { (millimeter) : [0.1, 1.2, 12] } as LengthBoundSpec);
+        annotation { "Name" : "Modifier offset from centerline" }
+        isLength(definition.modifierOffset, { (millimeter) : [-10, 0, 10] } as LengthBoundSpec);
+        }
+    }
+    if (definition.manufacturingMode == KManufacturing.MULTI || definition.manufacturingMode == KManufacturing.MULTI_MODIFIERS)
+    {
+    annotation { "Group Name" : "Multi-Material Hinges", "Collapsed By Default" : true }
+    {
+        annotation { "Name" : "Creases receiving TPU", "Default" : KCreaseSelection.ALL, "Description" : "Other retained creases keep integral rigid-material webs; connectivity is preserved." }
+        definition.tpuSelection is KCreaseSelection;
+        annotation { "Name" : "Different mountain and valley dimensions", "Default" : false }
+        definition.foldSpecific is boolean;
+        if (definition.foldSpecific)
+        {
+        annotation { "Name" : "Mountain TPU thickness" }
+        isLength(definition.mountainWebT, { (millimeter) : [0.15, 0.4, 2] } as LengthBoundSpec);
+        annotation { "Name" : "Valley TPU thickness" }
+        isLength(definition.valleyWebT, { (millimeter) : [0.15, 0.4, 2] } as LengthBoundSpec);
+        annotation { "Name" : "Mountain minimum span" }
+        isLength(definition.mountainSpan, { (millimeter) : [0.6, 1.6, 12] } as LengthBoundSpec);
+        annotation { "Name" : "Valley minimum span" }
+        isLength(definition.valleySpan, { (millimeter) : [0.6, 1.6, 12] } as LengthBoundSpec);
+        }
+        annotation { "Name" : "TPU web profile", "Default" : KWebProfile.CONTINUOUS }
+        definition.webProfile is KWebProfile;
+        if (definition.webProfile == KWebProfile.SEGMENTED)
+        {
+        annotation { "Name" : "Length of each anchored segment" }
+        isLength(definition.segmentLength, { (millimeter) : [1.5, 4, 20] } as LengthBoundSpec);
+        }
+    }
+    annotation { "Group Name" : "Hinge Interlocking", "Collapsed By Default" : true }
+    {
+        annotation { "Name" : "Captive anchor geometry", "Default" : KAnchorProfile.RIVET }
+        definition.anchorProfile is KAnchorProfile;
+        annotation { "Name" : "Anchor shaft diameter / width" }
+        isLength(definition.anchorShaftD, { (millimeter) : [0.8, 1.6, 6] } as LengthBoundSpec);
+        annotation { "Name" : "Anchor head diameter / width" }
+        isLength(definition.anchorHeadD, { (millimeter) : [1.2, 2.6, 10] } as LengthBoundSpec);
+        annotation { "Name" : "Flush anchor head thickness" }
+        isLength(definition.anchorHeadH, { (millimeter) : [0.2, 0.4, 2] } as LengthBoundSpec);
+        annotation { "Name" : "Anchor center inset into panel" }
+        isLength(definition.anchorEngagement, { (millimeter) : [1.2, 2.2, 10] } as LengthBoundSpec);
+        annotation { "Name" : "Connecting beam width" }
+        isLength(definition.anchorBeamW, { (millimeter) : [0.8, 1.2, 5] } as LengthBoundSpec);
+        annotation { "Name" : "Minimum anchor spacing" }
+        isLength(definition.anchorMinPitch, { (millimeter) : [2, 5, 30] } as LengthBoundSpec);
+        annotation { "Name" : "Rigid ligament around anchor head" }
+        isLength(definition.anchorLigament, { (millimeter) : [0.4, 0.6, 4] } as LengthBoundSpec);
+        annotation { "Name" : "Anchors on each side of each crease" }
+        isInteger(definition.anchorCount, { (unitless) : [1, 2, 8] } as IntegerBoundSpec);
+    }
+    }
+    annotation { "Group Name" : "Net End Connections", "Collapsed By Default" : true }
+    {
+        annotation { "Name" : "Longitudinal seam", "Default" : KSeamConnection.OPEN, "Description" : "Eyelets are integrated into each edge; close them with cord after wrapping. No bridge crosses the flat net." }
+        definition.seamConnection is KSeamConnection;
+    }
+    annotation { "Group Name" : "Tiling Connections", "Collapsed By Default" : true }
+    {
+        if (definition.manufacturingMode == KManufacturing.MODULAR)
+        {
+        annotation { "Name" : "Module boundary connection", "Default" : KSectionConnection.INDEPENDENT }
+        definition.sectionConnection is KSectionConnection;
+        annotation { "Name" : "Module layout", "Default" : KModuleLayout.SPACED }
+        definition.moduleLayout is KModuleLayout;
+        if (definition.moduleLayout == KModuleLayout.SPACED)
+        {
+        annotation { "Name" : "Space between module reference envelopes" }
+        isLength(definition.moduleSpacing, { (millimeter) : [2, 14, 100] } as LengthBoundSpec);
+        }
+        }
+    }
+    if (definition.seamConnection == KSeamConnection.LACING || (definition.manufacturingMode == KManufacturing.MODULAR && definition.sectionConnection == KSectionConnection.LACING))
+    {
+    annotation { "Group Name" : "Lacing Eyelet Dimensions", "Collapsed By Default" : true }
+    {
+        annotation { "Name" : "Protruding assembly tabs (net only)", "Default" : false }
+        definition.projectEyeletTabs is boolean;
+        if (!definition.projectEyeletTabs)
+        {
+            annotation { "Name" : "Eyelet collar height above panel" }
+            isLength(definition.eyeletCollarHeight, { (millimeter) : [0, 0.4, 2] } as LengthBoundSpec);
+        }
+        annotation { "Name" : "Eyelet width along edge" }
+        isLength(definition.seamEyeletW, { (millimeter) : [3, 5, 16] } as LengthBoundSpec);
+        annotation { "Name" : "Eyelet center inset / tab extension" }
+        isLength(definition.seamEyeletDepth, { (millimeter) : [3, 5, 16] } as LengthBoundSpec);
+        annotation { "Name" : "Lacing hole diameter" }
+        isLength(definition.seamEyeletHoleD, { (millimeter) : [1, 2, 8] } as LengthBoundSpec);
+        annotation { "Name" : "Eyelets on each side of a connection" }
+        isInteger(definition.seamEyeletCount, { (unitless) : [1, 1, 6] } as IntegerBoundSpec);
+    }
+    }
+    annotation { "Group Name" : "Export Preparation", "Collapsed By Default" : true }
+    {
+        annotation { "Name" : "Color material and modifier roles", "Default" : true }
+        definition.colorManufacturingRoles is boolean;
+        if (definition.manufacturingMode == KManufacturing.MULTI_MODIFIERS || definition.modifierEnabled)
+        {
+        annotation { "Name" : "Output only modifiers for separate export", "Default" : false }
+        definition.modifierOnly is boolean;
+        }
+        annotation { "Name" : "Restrict TPU and modifiers to listed crease IDs", "Default" : false }
+        definition.limitCreases is boolean;
+        if (definition.limitCreases)
+        {
+            annotation { "Name" : "One-based crease IDs", "Item name" : "Crease" }
+            definition.creaseIndices is array;
+            for (var selected in definition.creaseIndices)
+            {
+                annotation { "Name" : "Crease ID" }
+                isInteger(selected.manufacturingCreaseIndex, { (unitless) : [1, 1, 1024] } as IntegerBoundSpec);
+            }
+        }
+    }
+    }
 }
 {
+    definition = mergeMaps(K_MANUFACTURING_DEFAULTS, definition);
+    const splitMaterials = definition.manufacturingMode == KManufacturing.MULTI || definition.manufacturingMode == KManufacturing.MULTI_MODIFIERS;
+    const modular = definition.manufacturingMode == KManufacturing.MODULAR;
+    const makeModifiers = definition.manufacturingMode == KManufacturing.MULTI_MODIFIERS || definition.modifierEnabled;
+    kManufacturingValidation(definition);
     const mm = millimeter;
     const n = definition.sides;
     const count = definition.cells;
@@ -409,8 +665,11 @@ precondition
                 const uA = kEdgeInward(other.pts, cr.ia, other.c);
                 const uB = kEdgeInward(face.pts, e, face.c);
                 const ridge = dot(other.n, uB) + dot(face.n, uA) > 1e-8;
-                var gA = halfGap;
-                var gB = halfGap;
+                var creaseHalfGap = halfGap;
+                if (splitMaterials && definition.foldSpecific)
+                    creaseHalfGap = max(definition.gap, ridge ? definition.mountainSpan : definition.valleySpan) / mm / 2;
+                var gA = creaseHalfGap;
+                var gB = creaseHalfGap;
                 if (ridge)
                 {
                     const shift = kOffset(other.n, face.n, other.t, face.t);
@@ -456,9 +715,25 @@ precondition
         if (kFlatEdgeCloses(flatFaces[cr.a], cr.ia, flatFaces[cr.b]))
             links = append(links, cr);
     }
+    for (var k = 0; k < size(links); k += 1)
+        links[k].manufacturingId = k + 1;
+    if (definition.limitCreases)
+        for (var selected in definition.creaseIndices)
+            if (selected.manufacturingCreaseIndex > size(links))
+                throw regenError("A selected crease ID exceeds the retained crease count.", ["creaseIndices"]);
+    if (modular)
+    {
+        var retained = [];
+        for (var cr in links)
+            if (kModuleOf(faces[cr.a], definition) == kModuleOf(faces[cr.b], definition))
+                retained = append(retained, cr);
+        links = retained;
+    }
     if (definition.mode == KMode.NET)
     {
         faces = flatFaces;
+        if (modular && definition.moduleLayout == KModuleLayout.SPACED)
+            faces = kSpaceModules(faces, definition);
         for (var a = 0; a < size(faces); a += 1)
             for (var b = a + 1; b < size(faces); b += 1)
                 if (kOverlap2d(faces[a].pts, faces[b].pts))
@@ -470,6 +745,7 @@ precondition
     // Validate the complete inset polygon against EVERY original half-plane.
     // This detects inverted/empty insets, which the original script did not.
     var panelQueries = [];
+    var panelHoleKeepouts = [];
     for (var i = 0; i < size(faces); i += 1)
     {
         const f = faces[i];
@@ -517,9 +793,24 @@ precondition
                 }
             }
         }
+        var eyeletIndex = 0;
+        var eyeletHoles = [];
+        for (var cut in creases)
+        {
+            if (!kNeedsEyelets(cut, faces, definition) || (cut.a != i && cut.b != i))
+                continue;
+            const edge = cut.a == i ? cut.ia : cut.ib;
+            const eyeletId = panelId + ("eyelets" ~ eyeletIndex);
+            eyeletHoles = concatenateArrays([eyeletHoles, kEyelets(context, eyeletId, f, edge, gaps[i], cut.a == i, definition)]);
+            pieces = append(pieces, qBodyType(qCreatedBy(eyeletId, EntityType.BODY), BodyType.SOLID));
+            eyeletIndex += 1;
+        }
         if (size(pieces) > 1)
             opBoolean(context, panelId + "merge", { "tools" : qUnion(pieces), "operationType" : BooleanOperationType.UNION });
         const panel = qBodyType(qCreatedBy(panelId, EntityType.BODY), BodyType.SOLID);
+        for (var h = 0; h < size(eyeletHoles); h += 1)
+            kCircleCut(context, panelId + ("lacingHole" ~ h), panel, eyeletHoles[h].center, f.n,
+                definition.seamEyeletHoleD / mm / 2, eyeletHoles[h].depth);
         const r = f.cap ? holeR : ventR;
         if (r > 0)
         {
@@ -532,6 +823,12 @@ precondition
         }
         if (size(evaluateQuery(context, panel)) != 1)
             throw regenError("Panel reinforcement or attachment did not form one solid. Reduce accessory dimensions.");
+        var keepouts = [];
+        for (var hole in eyeletHoles)
+            keepouts = append(keepouts, { "center" : hole.center, "radius" : definition.seamEyeletHoleD / mm / 2 });
+        if (r > 0)
+            keepouts = append(keepouts, { "center" : kCentroid(shape), "radius" : r });
+        panelHoleKeepouts = append(panelHoleKeepouts, keepouts);
         panelQueries = append(panelQueries, panel);
     }
     // Exact solid contact checks at this DESIGN STATE, not a motion sweep.
@@ -547,6 +844,10 @@ precondition
     }
 
     var hingeQueries = [];
+    var tpuQueries = [];
+    var rigidHingeQueries = [];
+    var hingeOwners = [];
+    var modifierSpecs = [];
     var guideData = [];
     for (var k = 0; k < size(links); k += 1)
     {
@@ -560,63 +861,179 @@ precondition
         const uB = kEdgeInward(fB.pts, cr.ib, fB.c);
         const gA = gaps[cr.a][cr.ia];
         const gB = gaps[cr.b][cr.ib];
+        const mountain = cr.outer != definition.invertHinges;
+        const flexible = splitMaterials && kSelectCrease(cr, faces, mountain, definition.tpuSelection, definition);
+        const webThickness = flexible && definition.foldSpecific ?
+            (mountain ? definition.mountainWebT : definition.valleyWebT) / mm : hingeT;
+        if (webThickness < definition.minHinge / mm || webThickness > 0.8 * min(fA.t, fB.t))
+            throw regenError("Selected web thickness violates printable minimum or adjoining wall thickness.", ["mountainWebT", "valleyWebT", "hingeT"]);
         var interval = [definition.relief / mm + cornerR, norm(P1 - P0) - definition.relief / mm - cornerR];
         interval = kClipAttachment(interval, fA, cr.ia, gaps[cr.a], P0, ev, uA, gA, overlap, cornerR);
         interval = kClipAttachment(interval, fB, cr.ib, gaps[cr.b], P0, ev, uB, gB, overlap, cornerR);
-        if (interval[1] - interval[0] < max(1, 3 * hingeT))
-            throw regenError("A crease has insufficient hinge attachment length. Increase cell size or reduce gaps, overlap or end relief.",
-                             ["hingeWidth", "overlap", "relief"]);
-        const Pw = P0 + interval[0] * ev;
-        var poly = [];
-        if (cr.outer)
+        if (interval[1] - interval[0] < max(1, 3 * webThickness))
+            throw regenError("A crease has insufficient hinge attachment length. Increase cell size or reduce gaps, overlap or end relief.", ["hingeWidth", "overlap", "relief"]);
+        var stations = [];
+        if (flexible)
         {
-            const pA = Pw + (gA + overlap) * uA;
-            const pB = Pw + (gB + overlap) * uB;
-            const middle = Pw + kOffset(fA.n, fB.n, hingeT, hingeT);
-            poly = [pA, Pw, pB, pB + hingeT * fB.n, middle, pA + hingeT * fA.n];
+            const headRadius = definition.anchorHeadD / mm / 2 * (definition.anchorProfile == KAnchorProfile.BEAM_KEY ? sqrt(2) : 1);
+            const room = headRadius + definition.anchorLigament / mm + cornerR;
+            var anchorInterval = interval;
+            anchorInterval = kClipAnchor(anchorInterval, fA, gaps[cr.a], P0, ev, (gA + definition.anchorEngagement / mm) * uA, room);
+            anchorInterval = kClipAnchor(anchorInterval, fB, gaps[cr.b], P0, ev, (gB + definition.anchorEngagement / mm) * uB, room);
+            const available = anchorInterval[1] - anchorInterval[0];
+            if (available <= 0 || (definition.anchorCount > 1 && available / definition.anchorCount < definition.anchorMinPitch / mm))
+                throw regenError("Captive anchors do not fit this crease with the requested spacing and ligament. Reduce anchor count or increase cell size.", ["anchorCount", "anchorMinPitch", "anchorHeadD"]);
+            for (var a = 0; a < definition.anchorCount; a += 1)
+                stations = append(stations, anchorInterval[0] + available * (a + 0.5) / definition.anchorCount);
         }
-        else if (definition.mode == KMode.NET)
+        var segments = [interval];
+        if (flexible && definition.webProfile == KWebProfile.SEGMENTED)
         {
-            // A sloped inner web joins unequal plate/panel thicknesses in a net.
-            const pA = Pw + (gA + overlap) * uA + fA.t * fA.n;
-            const pB = Pw + (gB + overlap) * uB + fB.t * fB.n;
-            const middle = Pw + (fA.t + fB.t) / 2 * fA.n;
-            poly = [pA, middle, pB, pB - hingeT * fB.n, middle - hingeT * fA.n, pA - hingeT * fA.n];
+            segments = [];
+            const half = definition.segmentLength / mm / 2;
+            for (var station in stations)
+            {
+                if (station - half < interval[0] || station + half > interval[1])
+                    throw regenError("An anchored segment extends beyond its valid crease interval.", ["segmentLength"]);
+                segments = append(segments, [station - half, station + half]);
+            }
         }
-        else
+        for (var part = 0; part < size(segments); part += 1)
         {
-            const Pi = Pw + kOffset(fA.n, fB.n, fA.t, fB.t);
-            const wA = gA + overlap - dot(Pi - Pw, uA);
-            const wB = gB + overlap - dot(Pi - Pw, uB);
-            const pA = Pi + wA * uA;
-            const pB = Pi + wB * uB;
-            const middle = Pw + kOffset(fA.n, fB.n, fA.t - hingeT, fB.t - hingeT);
-            poly = [pA, Pi, pB, pB - hingeT * fB.n, middle, pA - hingeT * fA.n];
+            const segment = segments[part];
+            const Pw = P0 + segment[0] * ev;
+            var poly = [];
+            if (cr.outer)
+            {
+                const pA = Pw + (gA + overlap) * uA;
+                const pB = Pw + (gB + overlap) * uB;
+                const middle = Pw + kOffset(fA.n, fB.n, webThickness, webThickness);
+                poly = [pA, Pw, pB, pB + webThickness * fB.n, middle, pA + webThickness * fA.n];
+            }
+            else if (definition.mode == KMode.NET)
+            {
+                // A sloped inner web joins unequal plate/panel thicknesses in a net.
+                const pA = Pw + (gA + overlap) * uA + fA.t * fA.n;
+                const pB = Pw + (gB + overlap) * uB + fB.t * fB.n;
+                const middle = Pw + (fA.t + fB.t) / 2 * fA.n;
+                poly = [pA, middle, pB, pB - webThickness * fB.n, middle - webThickness * fA.n, pA - webThickness * fA.n];
+            }
+            else
+            {
+                const Pi = Pw + kOffset(fA.n, fB.n, fA.t, fB.t);
+                const wA = gA + overlap - dot(Pi - Pw, uA);
+                const wB = gB + overlap - dot(Pi - Pw, uB);
+                const pA = Pi + wA * uA;
+                const pB = Pi + wB * uB;
+                const middle = Pw + kOffset(fA.n, fB.n, fA.t - webThickness, fB.t - webThickness);
+                poly = [pA, Pi, pB, pB - webThickness * fB.n, middle, pA - webThickness * fA.n];
+            }
+            const hingeId = id + ("hinge" ~ k) + ("piece" ~ part);
+            kExtrudePoly(context, hingeId + "web", poly, ev, segment[1] - segment[0]);
+            var webPieces = [qCreatedBy(hingeId + "web" + "ext", EntityType.BODY)];
+            if (flexible)
+                for (var a = 0; a < size(stations); a += 1)
+                {
+                    if (definition.webProfile == KWebProfile.SEGMENTED && a != part)
+                        continue;
+                    const base = P0 + stations[a] * ev;
+                    const anchorId = hingeId + ("anchors" ~ a);
+                    kAnchor(context, anchorId + "A", fA, panelHoleKeepouts[cr.a], base, ev, uA, gA, cr.outer, webThickness, panelQueries[cr.a], definition);
+                    kAnchor(context, anchorId + "B", fB, panelHoleKeepouts[cr.b], base, ev, uB, gB, cr.outer, webThickness, panelQueries[cr.b], definition);
+                    webPieces = append(webPieces, qBodyType(qCreatedBy(anchorId, EntityType.BODY), BodyType.SOLID));
+                }
+            const web = kJoinBodies(context, hingeId + "merge", webPieces);
+            if (size(evaluateQuery(context, web)) != 1)
+                throw regenError("A TPU anchor or segment is disconnected from its hinge strip.");
+            var forbidden = [];
+            for (var j = 0; j < size(panelQueries); j += 1)
+                if (j != cr.a && j != cr.b)
+                    forbidden = append(forbidden, panelQueries[j]);
+            forbidden = concatenateArrays([forbidden, hingeQueries]);
+            if (size(forbidden) > 0 && size(evCollision(context, { "tools" : web, "targets" : qUnion(forbidden) })) > 0)
+                throw regenError("A hinge or anchor contacts a different panel or hinge. Increase relief, reduce anchor size or change geometry.", ["relief", "anchorHeadD", "compression"]);
+            if (!kHasVolumeContact(context, web, panelQueries[cr.a]) || !kHasVolumeContact(context, web, panelQueries[cr.b]))
+                throw regenError("A hinge does not overlap both intended panels.", ["overlap"]);
+            hingeQueries = append(hingeQueries, web);
+            hingeOwners = append(hingeOwners, kModuleOf(fA, definition));
+            if (flexible)
+            {
+                tpuQueries = append(tpuQueries, web);
+                kNameBodies(context, web, "TPU__crease_" ~ cr.manufacturingId ~ "__segment_" ~ (part + 1), color(0.15, 0.65, 0.4), definition);
+            }
+            else
+                rigidHingeQueries = append(rigidHingeQueries, web);
         }
-        const hingeId = id + ("hinge" ~ k);
-        kExtrudePoly(context, hingeId, poly, ev, interval[1] - interval[0]);
-        const web = qCreatedBy(hingeId + "ext", EntityType.BODY);
-        var forbidden = [];
-        for (var j = 0; j < size(panelQueries); j += 1)
-            if (j != cr.a && j != cr.b)
-                forbidden = append(forbidden, panelQueries[j]);
-        forbidden = concatenateArrays([forbidden, hingeQueries]);
-        if (size(forbidden) > 0 && size(evCollision(context, { "tools" : web, "targets" : qUnion(forbidden) })) > 0)
-            throw regenError("A hinge contacts a different panel or hinge. Increase end relief or change geometry.", ["relief", "compression", "hingeWidth"]);
-        if (!kHasVolumeContact(context, web, panelQueries[cr.a]) || !kHasVolumeContact(context, web, panelQueries[cr.b]))
-            throw regenError("A hinge does not overlap both panels. Increase overlap or reduce panel corner radius.", ["overlap", "cornerR"]);
-        hingeQueries = append(hingeQueries, web);
-        guideData = append(guideData, { "a" : P0, "b" : P1, "mountain" : cr.outer != definition.invertHinges });
+        if (makeModifiers && kSelectCrease(cr, faces, mountain, definition.modifierSelection, definition))
+        {
+            // A box as wide as the modifier can reach adjacent facets near a
+            // crease endpoint. Reserve an additional half-width at both ends.
+            const modifierMargin = max(definition.relief / mm, definition.modifierWidth / mm / 2 + abs(definition.modifierOffset / mm));
+            const modifierLength = interval[1] - interval[0] - 2 * modifierMargin;
+            if (modifierLength < 1)
+                throw regenError("A modifier leaves no usable crease length after endpoint clearance. Reduce modifier width or increase the cell size.", ["modifierWidth"]);
+            const spec = { "crease" : cr, "start" : P0 + (interval[0] + modifierMargin) * ev, "ev" : ev, "uA" : uA,
+                "length" : modifierLength, "nA" : fA.n, "nB" : fB.n, "tA" : fA.t, "tB" : fB.t, "uB" : uB, "gA" : gA, "gB" : gB };
+            const modifier = kModifier(context, id + ("modifier" ~ k), spec, panelQueries[cr.a], panelQueries[cr.b],
+                qSubtraction(panels, qUnion([panelQueries[cr.a], panelQueries[cr.b]])), definition);
+            modifierSpecs = append(modifierSpecs, modifier);
+        }
+        guideData = append(guideData, { "a" : P0, "b" : P1, "mountain" : mountain });
     }
-    opBoolean(context, id + "union", {
-        "tools" : qUnion([panels, qUnion(hingeQueries)]),
-        "operationType" : BooleanOperationType.UNION
-    });
-    const result = qBodyType(qCreatedBy(id, EntityType.BODY), BodyType.SOLID);
-    if (size(evaluateQuery(context, result)) != 1)
-        throw regenError("The result is disconnected. No printable part was accepted.");
-    setProperty(context, { "entities" : result, "propertyType" : PropertyType.NAME,
-                           "value" : definition.mode == KMode.NET ? "Kresling printable cut net" : "Kresling folded design state" });
+    var printed = [];
+    if (splitMaterials)
+    {
+        if (size(tpuQueries) == 0)
+            throw regenError("No retained creases match the TPU selection. Choose a different filter or crease IDs.", ["tpuSelection", "creaseIndices"]);
+        // Reserve the actual TPU volume in PLA; coincident material volumes are
+        // never exported. keepTools preserves the independent TPU solids.
+        opBoolean(context, id + "reserveTPU", { "tools" : qUnion(tpuQueries), "targets" : panels,
+            "operationType" : BooleanOperationType.SUBTRACTION, "keepTools" : true });
+        for (var panel in panelQueries)
+            if (size(evaluateQuery(context, panel)) != 1)
+                throw regenError("Anchor cavities split or erase a rigid panel. Increase ligament or reduce anchors.", ["anchorHeadD", "anchorLigament"]);
+        const rigid = kJoinBodies(context, id + "rigidMaterial", concatenateArrays([panelQueries, rigidHingeQueries]));
+        if (kHasVolumeContact(context, rigid, qUnion(tpuQueries)))
+            throw regenError("Printable PLA and TPU volumes overlap after material reservation.");
+        for (var web in tpuQueries)
+            if (size(evCollision(context, { "tools" : web, "targets" : rigid })) == 0)
+                throw regenError("A TPU solid has no contact with the remaining PLA assembly.");
+        kNameBodies(context, rigid, "PLA__rigid", color(0.3, 0.55, 0.85), definition);
+        printed = [rigid, qUnion(tpuQueries)];
+    }
+    else if (modular)
+    {
+        for (var cell = 0; cell < count; cell += 1)
+        {
+            var parts = [];
+            for (var i = 0; i < size(faces); i += 1)
+                if (kModuleOf(faces[i], definition) == cell)
+                    parts = append(parts, panelQueries[i]);
+            for (var i = 0; i < size(hingeQueries); i += 1)
+                if (hingeOwners[i] == cell)
+                    parts = append(parts, hingeQueries[i]);
+            const module = kJoinBodies(context, id + ("module" ~ cell), parts);
+            if (size(evaluateQuery(context, module)) != 1)
+                throw regenError("An independent module is not one connected solid.");
+            kNameBodies(context, module, "SINGLE_MATERIAL__module_" ~ (cell + 1), color(0.3, 0.55, 0.85), definition);
+            printed = append(printed, module);
+        }
+    }
+    else
+    {
+        const result = kJoinBodies(context, id + "union", [panels, qUnion(hingeQueries)]);
+        if (size(evaluateQuery(context, result)) != 1)
+            throw regenError("The result is disconnected. No printable part was accepted.");
+        kNameBodies(context, result, definition.mode == KMode.NET ? "Kresling printable cut net" : "Kresling folded design state", color(0.3, 0.55, 0.85), definition);
+        printed = [result];
+    }
+    if (makeModifiers)
+    {
+        if (size(modifierSpecs) == 0)
+            throw regenError("No retained creases match the modifier selection.", ["modifierSelection", "creaseIndices"]);
+        if (definition.modifierOnly)
+            opDeleteBodies(context, id + "modifierExportOnly", { "entities" : qUnion(printed) });
+    }
     if (definition.mode == KMode.NET && definition.guides)
         kGuides(context, id + "guides", guideData, max(panelT, plateT) + (definition.ribs ? definition.ribH / mm : 0) + 0.5);
     if (definition.compression > 0)
@@ -1044,4 +1461,304 @@ function kGuides(context is Context, id is Id, data is array, z is number)
         setProperty(context, { "entities" : qCreatedBy(groupId, EntityType.BODY), "propertyType" : PropertyType.APPEARANCE,
                                "value" : mountain ? color(0.9, 0.15, 0.1) : color(0.1, 0.3, 0.9) });
     }
+}
+
+// ---------------------------------------------------------------------------
+// Manufacturing bodies. Material volumes and slicer-only volumes stay separate.
+// ---------------------------------------------------------------------------
+function kManufacturingValidation(d is map)
+{
+    const mm = millimeter;
+    const split = d.manufacturingMode == KManufacturing.MULTI || d.manufacturingMode == KManufacturing.MULTI_MODIFIERS;
+    if (d.limitCreases && size(d.creaseIndices) == 0)
+        throw regenError("Enter at least one crease ID, or disable the crease-ID restriction.", ["creaseIndices"]);
+    if (split)
+    {
+        const envelope = d.anchorHeadD / 2 * (d.anchorProfile == KAnchorProfile.BEAM_KEY ? sqrt(2) : 1);
+        if (d.anchorHeadD < d.anchorShaftD + 0.6 * mm)
+            throw regenError("Anchor heads must be at least 0.6 mm wider than their shafts for positive capture.", ["anchorHeadD", "anchorShaftD"]);
+        if (d.anchorEngagement < envelope + d.anchorLigament)
+            throw regenError("Anchor engagement must fit the head envelope plus a rigid edge ligament.", ["anchorEngagement", "anchorLigament"]);
+        if (d.anchorHeadH < d.minHinge || d.panelT / mm < 2 * d.anchorHeadH / mm + 0.4 - 1e-6 ||
+            (d.caps != KCaps.NONE && d.plateT / mm < 2 * d.anchorHeadH / mm + 0.4 - 1e-6))
+            throw regenError("Captive heads need printable TPU thickness and at least a 0.4 mm rigid layer between the two head pockets.", ["anchorHeadH", "panelT", "plateT"]);
+        if (d.anchorBeamW < d.minWall || d.anchorMinPitch < 2 * envelope + d.clearance)
+            throw regenError("Anchor beams or spacing are smaller than printable wall and head-clearance limits.", ["anchorBeamW", "anchorMinPitch"]);
+        if (d.anchorEngagement <= d.overlap ||
+            (d.webProfile == KWebProfile.SEGMENTED && (d.segmentLength < d.anchorBeamW + 0.2 * mm || d.segmentLength + d.clearance >= d.anchorMinPitch)))
+            throw regenError("Anchors must extend past the web overlap; segments must fit the beam and leave space between segments.", ["anchorEngagement", "overlap", "segmentLength"]);
+    }
+    const laced = d.seamConnection == KSeamConnection.LACING ||
+        (d.manufacturingMode == KManufacturing.MODULAR && d.sectionConnection == KSectionConnection.LACING);
+    if (laced && (d.seamEyeletW < d.seamEyeletHoleD + 2 * d.minWall ||
+        d.seamEyeletDepth < (d.projectEyeletTabs ? d.seamEyeletW : d.seamEyeletW / 2 + d.minWall)))
+        throw regenError("Eyelets require a printable hole ligament and enough inset or extension for the selected arrangement.", ["seamEyeletW", "seamEyeletDepth", "seamEyeletHoleD"]);
+    if (laced && d.projectEyeletTabs && d.mode != KMode.NET)
+        throw regenError("Protruding eyelet tabs are a flat assembly option. Use inset eyelets for a folded-compatible lacing seam.", ["projectEyeletTabs"]);
+    if (d.manufacturingMode == KManufacturing.MODULAR && d.mode == KMode.NET)
+    {
+        if (d.sectionConnection == KSectionConnection.LACING && d.projectEyeletTabs && d.moduleLayout != KModuleLayout.SPACED)
+            throw regenError("Section eyelets need the spaced net layout to avoid entering the neighboring module.", ["moduleLayout"]);
+        if (d.moduleLayout == KModuleLayout.SPACED && laced && d.projectEyeletTabs && d.moduleSpacing < 2 * d.seamEyeletDepth + d.clearance)
+            throw regenError("Module spacing must exceed two eyelet extensions plus clearance.", ["moduleSpacing"]);
+    }
+}
+
+function kModuleOf(face is map, d is map) returns number
+{
+    if (!face.cap)
+        return face.cell;
+    return face.ids[0] < d.sides ? 0 : d.cells - 1;
+}
+
+function kSelectCrease(cr is map, faces is array, mountain is boolean, choice is KCreaseSelection, d is map) returns boolean
+{
+    if (d.limitCreases)
+    {
+        var listed = false;
+        for (var entry in d.creaseIndices)
+            if (entry.manufacturingCreaseIndex == cr.manufacturingId)
+                listed = true;
+        if (!listed)
+            return false;
+    }
+    if (choice == KCreaseSelection.ALL)
+        return true;
+    if (choice == KCreaseSelection.MOUNTAIN)
+        return mountain;
+    if (choice == KCreaseSelection.VALLEY)
+        return !mountain;
+    const a = faces[cr.a];
+    const b = faces[cr.b];
+    const section = !a.cap && !b.cap && a.cell != b.cell;
+    if (choice == KCreaseSelection.SECTION)
+        return section;
+    if (a.cap || b.cap || section)
+        return false;
+    const diagonal = floor(a.order / 2) == floor(b.order / 2);
+    return choice == KCreaseSelection.DIAGONAL ? diagonal : !diagonal;
+}
+
+function kSpaceModules(faces is array, d is map) returns array
+{
+    var cursor = 0;
+    for (var cell = 0; cell < d.cells; cell += 1)
+    {
+        var xmin = 1e10;
+        var xmax = -1e10;
+        var ymin = 1e10;
+        for (var f in faces)
+            if (kModuleOf(f, d) == cell)
+                for (var p in f.pts)
+                {
+                    xmin = min(xmin, p[0]);
+                    xmax = max(xmax, p[0]);
+                    ymin = min(ymin, p[1]);
+                }
+        const shift = vector(cursor - xmin, -ymin, 0);
+        for (var i = 0; i < size(faces); i += 1)
+            if (kModuleOf(faces[i], d) == cell)
+            {
+                var pts = [];
+                for (var p in faces[i].pts)
+                    pts = append(pts, p + shift);
+                faces[i].pts = pts;
+                faces[i].c = kCentroid(pts);
+            }
+        cursor += xmax - xmin + d.moduleSpacing / millimeter;
+    }
+    return faces;
+}
+
+function kClipAnchor(interval is array, face is map, gaps is array, origin is Vector, ev is Vector,
+                     offset is Vector, radius is number) returns array
+{
+    for (var e = 0; e < size(face.pts); e += 1)
+    {
+        const u = kEdgeInward(face.pts, e, face.c);
+        const need = gaps[e] + radius - dot(origin + offset - face.pts[e], u);
+        const slope = dot(ev, u);
+        if (abs(slope) < 1e-9)
+        {
+            if (need > 1e-6)
+                throw regenError("An anchor head does not fit inside a panel with its edge ligament.", ["anchorEngagement", "anchorHeadD"]);
+        }
+        else if (slope > 0)
+            interval[0] = max(interval[0], need / slope);
+        else
+            interval[1] = min(interval[1], need / slope);
+    }
+    return interval;
+}
+
+function kJoinBodies(context is Context, id is Id, bodies is array) returns Query
+{
+    const q = qBodyType(qUnion(bodies), BodyType.SOLID);
+    if (size(evaluateQuery(context, q)) > 1)
+        opBoolean(context, id, { "tools" : q, "operationType" : BooleanOperationType.UNION });
+    return q;
+}
+
+function kNameBodies(context is Context, bodies is Query, prefix is string, appearance is Color, d is map)
+{
+    var index = 1;
+    for (var body in evaluateQuery(context, bodies))
+    {
+        setProperty(context, { "entities" : body, "propertyType" : PropertyType.NAME, "value" : prefix ~ "__part_" ~ index });
+        if (d.colorManufacturingRoles)
+            setProperty(context, { "entities" : body, "propertyType" : PropertyType.APPEARANCE, "value" : appearance });
+        index += 1;
+    }
+}
+
+function kCylinder(context is Context, id is Id, center is Vector, normal is Vector, radius is number, depth is number)
+{
+    const sk = newSketchOnPlane(context, id + "sk", { "sketchPlane" : plane(center * millimeter, normal) });
+    skCircle(sk, "circle", { "center" : vector(0, 0) * millimeter, "radius" : radius * millimeter });
+    skSolve(sk);
+    opExtrude(context, id + "ext", { "entities" : qSketchRegion(id + "sk"), "direction" : normal,
+        "endBound" : BoundingType.BLIND, "endDepth" : depth * millimeter });
+    opDeleteBodies(context, id + "del", { "entities" : qCreatedBy(id + "sk", EntityType.BODY) });
+}
+
+function kRectangle(origin is Vector, x is Vector, y is Vector, xmin is number, xmax is number, ymin is number, ymax is number) returns array
+{
+    return [origin + xmin * x + ymin * y, origin + xmax * x + ymin * y,
+            origin + xmax * x + ymax * y, origin + xmin * x + ymax * y];
+}
+
+function kAnchor(context is Context, id is Id, face is map, keepouts is array, base is Vector, ev is Vector,
+                 u is Vector, gap is number, outer is boolean, webT is number, panel is Query, d is map)
+{
+    const mm = millimeter;
+    const headR = d.anchorHeadD / mm / 2;
+    const shaftR = d.anchorShaftD / mm / 2;
+    const headT = d.anchorHeadH / mm;
+    const embed = d.anchorEngagement / mm;
+    const center = base + (gap + embed) * u;
+    const envelope = headR * (d.anchorProfile == KAnchorProfile.BEAM_KEY ? sqrt(2) : 1);
+    for (var hole in keepouts)
+        if (norm(center - hole.center) < hole.radius + envelope + d.anchorLigament / mm)
+            throw regenError("An anchor pocket reaches a lacing, ventilation or end-plate hole. Reduce holes or change anchor spacing.", ["ventD", "holeD", "seamEyeletDepth", "anchorCount"]);
+    const beamOrigin = base + (outer ? 0 : face.t - webT) * face.n;
+    const beam = kRectangle(beamOrigin, ev, u, -d.anchorBeamW / mm / 2, d.anchorBeamW / mm / 2,
+                            gap + d.overlap / mm / 2, gap + embed);
+    kExtrudePoly(context, id + "beam", beam, face.n, webT);
+    if (d.anchorProfile == KAnchorProfile.RIVET)
+    {
+        kCylinder(context, id + "shaft", center, face.n, shaftR, face.t);
+        kCylinder(context, id + "outerHead", center, face.n, headR, headT);
+        kCylinder(context, id + "innerHead", center + (face.t - headT) * face.n, face.n, headR, headT);
+    }
+    else
+    {
+        kExtrudePoly(context, id + "shaft", kRectangle(center, ev, u, -shaftR, shaftR, -shaftR, shaftR), face.n, face.t);
+        const head = kRectangle(center, ev, u, -headR, headR, -headR, headR);
+        kExtrudePoly(context, id + "outerHead", head, face.n, headT);
+        var inner = [];
+        for (var p in head)
+            inner = append(inner, p + (face.t - headT) * face.n);
+        kExtrudePoly(context, id + "innerHead", inner, face.n, headT);
+    }
+    if (!kHasVolumeContact(context, qCreatedBy(id + "shaft" + "ext", EntityType.BODY), panel))
+        throw regenError("An anchor shaft does not pass through its intended panel.");
+}
+
+function kNeedsEyelets(cr is map, faces is array, d is map) returns boolean
+{
+    const a = faces[cr.a];
+    const b = faces[cr.b];
+    if (a.cap || b.cap)
+        return false;
+    if (a.cell != b.cell)
+        return d.manufacturingMode == KManufacturing.MODULAR && d.sectionConnection == KSectionConnection.LACING;
+    return d.seamConnection == KSeamConnection.LACING && abs(a.order - b.order) == 2 * d.sides - 1;
+}
+
+function kEyelets(context is Context, id is Id, face is map, edge is number, gaps is array, firstSide is boolean, d is map) returns array
+{
+    const mm = millimeter;
+    const p0 = face.pts[edge];
+    const p1 = face.pts[(edge + 1) % size(face.pts)];
+    const ev = normalize(p1 - p0);
+    const u = kEdgeInward(face.pts, edge, face.c);
+    const radius = d.seamEyeletW / mm / 2;
+    const gap = gaps[edge];
+    var interval = [radius + d.clearance / mm, norm(p1 - p0) - radius - d.clearance / mm];
+    if (d.projectEyeletTabs)
+        interval = kClipAttachment(interval, face, edge, gaps, p0, ev, u, gap, d.overlap / mm, radius);
+    else
+        interval = kClipAnchor(interval, face, gaps, p0, ev, (gap + d.seamEyeletDepth / mm) * u,
+            radius + max(d.minWall / mm, d.roundPanels ? d.cornerR / mm : 0));
+    const length = interval[1] - interval[0];
+    if (length / (2 * d.seamEyeletCount) < 2 * radius + d.clearance / mm)
+        throw regenError("Staggered eyelets do not fit the boundary with the requested clearance. Reduce count or width.", ["seamEyeletCount", "seamEyeletW"]);
+    const ascending = face.ids[edge] < face.ids[(edge + 1) % size(face.ids)];
+    var holes = [];
+    for (var i = 0; i < d.seamEyeletCount; i += 1)
+    {
+        const fraction = (2 * i + (firstSide ? 0.5 : 1.5)) / (2 * d.seamEyeletCount);
+        const distance = ascending ? interval[0] + length * fraction : interval[1] - length * fraction;
+        const base = p0 + distance * ev;
+        const center = base + (d.projectEyeletTabs ? -d.seamEyeletDepth / mm + radius : gap + d.seamEyeletDepth / mm) * u;
+        const partId = id + ("eyelet" ~ i);
+        if (d.projectEyeletTabs)
+        {
+            const neck = kRectangle(base, ev, u, -radius, radius, -d.seamEyeletDepth / mm + radius, gap + d.overlap / mm);
+            kExtrudePoly(context, partId + "neck", neck, face.n, face.t);
+        }
+        const collar = d.projectEyeletTabs ? 0 : d.eyeletCollarHeight / mm;
+        kCylinder(context, partId + "tip", center, face.n, radius, face.t + collar);
+        const ventilationR = d.ventD / mm / 2;
+        if (ventilationR > 0 && norm(center - kCentroid(kInset(face.pts, gaps, face.c))) < ventilationR + d.seamEyeletHoleD / mm / 2 + d.ligament / mm)
+            throw regenError("A lacing eyelet leaves insufficient ligament to a ventilation hole.", ["ventD", "seamEyeletDepth"]);
+        const rib = d.ribs ? d.ribH / mm : 0;
+        holes = append(holes, { "center" : center, "depth" : face.t + max(collar, rib) });
+    }
+    // Cut after the collar has been united with the owner, otherwise the
+    // underlying panel would fill the collar's hole again.
+    return holes;
+}
+
+function kModifier(context is Context, id is Id, spec is map, panelA is Query, panelB is Query, otherPanels is Query, d is map) returns Query
+{
+    if (norm(spec.nA + spec.nB) < 1e-5)
+        throw regenError("Modifier orientation is ill-conditioned at this crease. Change the design state.");
+    const normal = normalize(spec.nA + spec.nB);
+    var across = normalize(cross(normal, spec.ev));
+    if (dot(across, spec.uA) < 0)
+        across = -across;
+    var shift = (spec.tA + spec.tB) / 2 * normal;
+    if (abs(dot(spec.nA, spec.nB)) < 0.999999)
+        shift = kOffset(spec.nA, spec.nB, spec.tA, spec.tB);
+    const origin = spec.start + shift + d.modifierOffset / millimeter * across;
+    // Require a finite band inside both panel footprints, not a nearly
+    // tangent touch that might disappear in a slicer or mesh export.
+    const coverage = d.minWall / millimeter / 2;
+    for (var side in [{ "n" : spec.nA, "t" : spec.tA, "u" : spec.uA, "g" : spec.gA },
+                     { "n" : spec.nB, "t" : spec.tB, "u" : spec.uB, "g" : spec.gB }])
+    {
+        const penetration = min(side.t, d.modifierDepth / millimeter);
+        for (var widthFraction in [0.5, 1])
+            for (var depthFraction in [0.25, 0.5])
+            {
+                const point = spec.start + (side.g + coverage * widthFraction) * side.u +
+                    (side.t - penetration * depthFraction) * side.n;
+                const relative = point - origin;
+                if (abs(dot(relative, across)) > d.modifierWidth / millimeter / 2 - 1e-6 ||
+                    dot(relative, normal) < -d.modifierDepth / millimeter + 1e-6 ||
+                    dot(relative, normal) > d.modifierHeight / millimeter - 1e-6)
+                    throw regenError("Modifier coverage is too shallow or narrow for a finite panel region. Increase width, height or penetration, or reduce offset.", ["modifierWidth", "modifierDepth", "modifierHeight", "modifierOffset"]);
+            }
+    }
+    const poly = kRectangle(origin, across, normal, -d.modifierWidth / millimeter / 2, d.modifierWidth / millimeter / 2,
+                            -d.modifierDepth / millimeter, d.modifierHeight / millimeter);
+    kExtrudePoly(context, id, poly, spec.ev, spec.length);
+    const modifier = qCreatedBy(id + "ext", EntityType.BODY);
+    if (!kHasVolumeContact(context, modifier, panelA) || !kHasVolumeContact(context, modifier, panelB))
+        throw regenError("A modifier misses one of its intended panels. Increase width/depth or reduce offset.", ["modifierWidth", "modifierDepth", "modifierOffset"]);
+    if (kHasVolumeContact(context, modifier, otherPanels))
+        throw regenError("A modifier reaches an unrelated panel. Increase hinge end relief or reduce modifier width.", ["relief", "modifierWidth"]);
+    kNameBodies(context, modifier, "MODIFIER_ONLY_NOT_PRINT__crease_" ~ spec.crease.manufacturingId, color(0.95, 0.55, 0.1), d);
+    return modifier;
 }

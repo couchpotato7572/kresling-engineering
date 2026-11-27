@@ -22,6 +22,11 @@ Start with the defaults: six sides, 60 mm circumdiameter, one 30 mm cell, 75° t
 - Configurable panel thickness, hinge webs, gaps, overlap, and manufacturing limits.
 - Optional hinged end plates, local holes, ventilation, reinforcement islands, rounded panel corners, and slotted attachment tabs.
 - Checks for collapsed insets, overlapping nets, unintended component contacts, and disconnected results.
+- Separate PLA/TPU solids with captive through-rivet or beam-key anchors, fold-specific web dimensions, and continuous/segmented strips.
+- Independent slicer modifier volumes with fold/type/individual-crease filters and a modifiers-only export option.
+- Integrated lacing eyelets, optional net-only projecting tabs, and independent laced modules with assembled/spaced layouts.
+
+See [Manufacturing and Bambu Studio workflows](MANUFACTURING.md) for material roles, all new controls, export instructions, supported connections and calibration limits.
 
 See the [engineering guide](ENGINEERING_GUIDE.md) for every parameter, geometry equations, example configurations, deliberate cuts, printing considerations, and limitations.
 
@@ -29,20 +34,24 @@ See the [engineering guide](ENGINEERING_GUIDE.md) for every parameter, geometry 
 
 This is the latest corrected source from development. It includes fixes for FeatureScript reserved-keyword access (`hit["type"]`) and the duplicate custom-cell parameter ID (`cell.cellTwist` / `row.cellTwist`). **Successful Onshape recompilation and B-rep regeneration have not yet been confirmed after these fixes.**
 
-An independent Python numerical model and mesh Boolean kernel passed 13 representative designs in both representations and rejected five invalid configurations. Those checks do not execute or compile the FeatureScript. Details and the source hash are in [VALIDATION.md](VALIDATION.md); machine-readable results are in [validation_results.json](validation_results.json).
+The original independent Python numerical model and mesh Boolean kernel passed 13 representative designs in both representations and rejected five invalid configurations. New manufacturing checks exercise captured anchors, material partitioning, modifiers, lacing and modular assemblies; see the validation report. Those checks do not execute or compile the FeatureScript. Details and the source hash are in [VALIDATION.md](VALIDATION.md); machine-readable results are in [validation_results.json](validation_results.json).
 
 ## Reproduce the independent checks
 
 ```bash
 python -m venv .venv
 .venv/bin/pip install -r requirements-validation.txt
+.venv/bin/python check_featurescript_source.py
 .venv/bin/python verify_geometry.py
+.venv/bin/python -m unittest verify_manufacturing -v
 .venv/bin/python make_preview.py
 ```
 
 On Windows, use `.venv\Scripts\python.exe` and `.venv\Scripts\pip.exe`. The verification script recreates its mesh files before the preview script uses them.
 
 ## Mechanical scope
+
+The GitHub Actions workflow runs source guards and independent mesh checks on pull requests. It does not compile FeatureScript in Onshape.
 
 Compression changes the designed panel dimensions; it does not simulate a single fixed net folding continuously. Panel dimensions unfold exactly, while finite-thickness hinge bend allowances remain unsolved. Some tapered or asymmetric connections need relief cuts. Locking mechanisms and transitions between different side counts require separate components.
 

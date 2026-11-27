@@ -83,7 +83,7 @@ No claim is made that a valid mesh proves a valid Onshape B-rep, a printable hin
 7. Change side count and cell count, turn alternation on/off, change seam, switch profiles, and return to defaults. Reconfirm regeneration and identity of this feature's own result without modifying pre-existing parts.
 8. Export only the intended solid and inspect it in the target slicer for manifold status, wall generation, layer count, bridging and support. Print and cycle a coupon before extending the structure.
 
-Source SHA-256: `e4e8f11f360fe41206eeb949faea87e0ea96eeb69b45b6ccbc33373a759cc97d`.
+Source SHA-256: `34b0c033bebab146e8c4257dbd68003144d81f8fcfa6cc1765b695b252dfd77c`.
 
 ## Follow-up from user-provided Onshape compiler diagnostics
 
@@ -96,3 +96,22 @@ The corrected file passed header, reserved-member-access, and delimiter checks. 
 ## Second compiler-feedback correction: unique array parameter IDs
 
 Onshape reported `Duplicate feature parameter twist` at the custom-schedule angle declaration. Array-entry parameter IDs must be unique across the entire feature, including top-level parameters. The custom angle declaration is now `cell.cellTwist`, and its regeneration read is `row.cellTwist`. The global `definition.twist` remains unchanged. All scalar and typed UI declarations were scanned together and now have unique terminal parameter names. User-facing labels and geometry calculations are unchanged. This update addresses the reported precondition error; recompilation in Onshape remains pending.
+
+## Manufacturing and connections change
+
+The branch adds separate PLA/TPU construction, round/rectangular captive keys, continuous/segmented webs, fold-specific dimensions, filtered slicer volumes, default inset lacing eyelets, net-only projecting tabs, independent modules, and a common-coordinate export workflow. The original geometry path remains the default. Detailed controls and explicit limitations are in `MANUFACTURING.md`.
+
+Validation for this change:
+
+- `python check_featurescript_source.py`: passes, including 94 globally unique parameter IDs, balanced source, reserved-keyword guards, complete local helper references, the matching 2144 header/import, and role/material-reservation checks. This is not a compiler.
+- `python verify_geometry.py`: original 13 designs still pass in both representations; five invalid designs are rejected. The reference model does not execute the FeatureScript.
+- `python -m unittest verify_manufacturing -v`: 19 test methods, with folded/net and configuration subcases. Covers round and rectangular captive heads, positive engagement with both owners, finite modifier footprints, unrelated-component interference, separate material reservation, segmented strips, selected mountain folds, fold-specific thickness, capped cells, clockwise/inverted hinges, repeated/alternating cells, taper/custom schedules, independent modules, inset section/seam eyelets, net-only projecting tabs, and invalid manufacturing dimensions.
+- Python scripts compile, and `git diff --check` passes.
+
+The manufacturing reference uses 48-sided circle meshes and a positional simplification tolerance of **1e-5 mm**. Near-zero-volume numerical components below **1e-7 mm³** are excluded from connectivity counts. Re-intersecting a difference with its own tools can produce residue at coincident mesh surfaces; the partition-volume bound is the measured surface area multiplied by four times the positional tolerance. This bounds tessellation/Boolean residuals rather than treating them as designed material overlap. The FeatureScript instead reserves the exact TPU solid volume and rejects volume intersections with the remaining PLA using Onshape collision classification; that B-rep behavior still needs Onshape acceptance.
+
+The cross-section in `manufacturing_preview.png` is calculated from an independent planar material partition and is explicitly not an Onshape render or a strength prediction.
+
+### Required review before merging or manufacturing
+
+No successful Onshape compilation/regeneration is claimed for this branch. Compile the complete Feature Studio source, exercise all four manufacturing modes, inspect exact body counts and partitions, and validate export/assignment in the installed Bambu Studio version. Print a material/anchor coupon and validate retention, bridging and fatigue before relying on a full assembly. Projecting tabs are intentionally rejected in Folded mode; inset eyelets are the supported folded-compatible closure. No merging is authorized by the development request; this branch is to be reviewed in a pull request and merged only after the user's approval.
