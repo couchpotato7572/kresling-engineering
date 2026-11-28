@@ -83,7 +83,7 @@ No claim is made that a valid mesh proves a valid Onshape B-rep, a printable hin
 7. Change side count and cell count, turn alternation on/off, change seam, switch profiles, and return to defaults. Reconfirm regeneration and identity of this feature's own result without modifying pre-existing parts.
 8. Export only the intended solid and inspect it in the target slicer for manifold status, wall generation, layer count, bridging and support. Print and cycle a coupon before extending the structure.
 
-Source SHA-256: `34b0c033bebab146e8c4257dbd68003144d81f8fcfa6cc1765b695b252dfd77c`.
+Source SHA-256 (current source): `134601f98939212951c63fb5e2ff2a25cf829f92ca1925cde4e4a2256c192c94`.
 
 ## Follow-up from user-provided Onshape compiler diagnostics
 
@@ -114,4 +114,24 @@ The cross-section in `manufacturing_preview.png` is calculated from an independe
 
 ### Required review before merging or manufacturing
 
-No successful Onshape compilation/regeneration is claimed for this branch. Compile the complete Feature Studio source, exercise all four manufacturing modes, inspect exact body counts and partitions, and validate export/assignment in the installed Bambu Studio version. Print a material/anchor coupon and validate retention, bridging and fatigue before relying on a full assembly. Projecting tabs are intentionally rejected in Folded mode; inset eyelets are the supported folded-compatible closure. No merging is authorized by the development request; this branch is to be reviewed in a pull request and merged only after the user's approval.
+No successful Onshape compilation/regeneration is claimed for this branch. Compile the complete Feature Studio source, exercise all four manufacturing modes, inspect exact body counts and partitions, and validate export/assignment in the installed Bambu Studio version. Print a material/anchor coupon and validate retention, bridging and fatigue before relying on a full assembly. Projecting tabs are intentionally rejected in Folded mode; inset eyelets and the newer mating dovetails are available in both representations. No merging is authorized by the development request; this branch is to be reviewed in a pull request and merged only after the user's approval.
+
+## Modifier, hole-row and dovetail refinement
+
+The submitted user source matched the previous repository source except for its **Codex Kresling V2** display name, which this update preserves. The original short modifier was a bisector-oriented rectangular prism with hidden width-based end shortening; the replacement uses a full-length spine and panel-following clipped wings. Panel generation, exact development, tiling and material reservation remain the same underlying model.
+
+The user's final hole clarification was **horizontal centers with axes normal to the panels**. No sideways bores or assembly rotation were introduced. A common row-height datum is used for parallel seam copies where feasible; tapered fan edges and module section edges use local horizontal rows. This geometric constraint is described in `MANUFACTURING.md`.
+
+The final local run passed the original 13 valid designs in both modes and five expected rejections. All **32 manufacturing/refinement test methods** passed in 193.225 seconds, with configuration subcases. Python compilation, the source scan and `git diff --check` also passed. The 13 refinement methods cover:
+
+- Rigid transport of reference vertices and the complete print-bed rotation.
+- Full crease ribbon endpoints, 1.5 times actual computed gap width, reduced penetration, explicit margins and the absolute-width alternative. Basic, repeated/alternating, tapered and capped designs run in both folded and net frames.
+- Horizontal hole spacing, normal-axis drilling and connected owners for default one-hole and larger two-hole seam patterns. The physically incompatible paired two-hole pattern on the smaller tube is rejected.
+- Rounded complementary profile offsets, remaining dovetail undercut, disconnected/interfering supports, folded/net owner attachment and clearance from other panels and all original hinges. Basic, repeated/alternating and tapered seams are included.
+- Continuous rails, one-way end stops, captured TPU-assisted male keys, and combined PLA/TPU hinges, full ribbons and rigid/TPU-assisted dovetails. The combined TPU-assisted example uses one segment.
+
+These are independent NumPy/Shapely/Manifold calculations, not execution of FeatureScript. Mesh corner arcs are tessellated; the source uses analytic sketch arcs. Tests do not execute the optional Onshape chamfer operation. The source checks report **116 unique parameter IDs and 43 complete helpers**; they do not type-check or compile FeatureScript. New API schemas were reviewed against the published library for `skArc`, `opTransform`, `opPattern`, `opChamfer`, coordinate transforms and bounding-box queries.
+
+The two preview figures are independent calculations, not Onshape screenshots. `make_refinement_preview.py` reproduces the full-ribbon net, horizontal rows and mating cross-section. `make_manufacturing_preview.py` now shows the thinner modifier envelope.
+
+Before accepting this update in Onshape, compile the entire file, regenerate the example nets and folded states, inspect exact partitions and hole positions, and test both rigid and TPU-assisted closure options. Inspect a Front projection for row centers and Top view for the circular net bores. Exercise modifier Disabled while using the modifier manufacturing mode. Check continuous/segmented joints, the optional chamfer and end stop separately. The three local insertion samples do not establish an assembly path for a whole multi-cell structure. Raised dovetail supports require support/clearance checks, and fit, retention and fatigue require physical coupons. No physical test, clinical safety or completed Onshape recompilation is claimed.

@@ -109,7 +109,9 @@ export enum KSeamConnection
     annotation { "Name" : "Open seam" }
     OPEN,
     annotation { "Name" : "Rounded eyelets for post-print lacing" }
-    LACING
+    LACING,
+    annotation { "Name" : "Mating dovetail loop closure" }
+    DOVETAIL
 }
 
 export enum KSectionConnection
@@ -128,15 +130,87 @@ export enum KModuleLayout
     SPACED
 }
 
+export enum KModifierGeneration
+{
+    annotation { "Name" : "Automatic from manufacturing mode" }
+    AUTO,
+    annotation { "Name" : "Enabled" }
+    ON,
+    annotation { "Name" : "Disabled" }
+    OFF
+}
+
+export enum KModifierWidth
+{
+    annotation { "Name" : "Multiplier of actual hinge gap" }
+    RELATIVE,
+    annotation { "Name" : "Absolute ribbon width" }
+    ABSOLUTE
+}
+
+export enum KModifierCoverage
+{
+    annotation { "Name" : "Full crease length" }
+    FULL,
+    annotation { "Name" : "Printed hinge interval" }
+    HINGE
+}
+
+export enum KConnectionLayout
+{
+    annotation { "Name" : "Horizontal row in printable net" }
+    HORIZONTAL,
+    annotation { "Name" : "Along crease with staggered pairs (legacy)" }
+    LEGACY
+}
+
+export enum KDovetailLayout
+{
+    annotation { "Name" : "Segmented sliding keys" }
+    SEGMENTED,
+    annotation { "Name" : "Continuous sliding rail" }
+    CONTINUOUS
+}
+
+export enum KDovetailMaterial
+{
+    annotation { "Name" : "Rigid mating halves" }
+    RIGID,
+    annotation { "Name" : "TPU-assisted male with captive anchors" }
+    TPU_MALE
+}
+
 // Defaults also preserve regeneration of instances saved before these controls existed.
 const K_MANUFACTURING_DEFAULTS = {
+    "modifierGeneration" : KModifierGeneration.AUTO,
+    "modifierWidthMode" : KModifierWidth.RELATIVE,
+    "modifierWidthMultiplier" : 1.5,
+    "modifierCoverage" : KModifierCoverage.FULL,
+    "modifierStartMargin" : 0 * millimeter,
+    "modifierEndMargin" : 0 * millimeter,
+    "connectionLayout" : KConnectionLayout.HORIZONTAL,
+    "connectionHolePitch" : 6 * millimeter,
+    "dovetailLayout" : KDovetailLayout.SEGMENTED,
+    "dovetailMaterial" : KDovetailMaterial.RIGID,
+    "dovetailWidth" : 4 * millimeter,
+    "dovetailDepth" : 2 * millimeter,
+    "dovetailAngle" : 15 * degree,
+    "dovetailWall" : 1 * millimeter,
+    "dovetailClearance" : 0.2 * millimeter,
+    "dovetailRadius" : 0.3 * millimeter,
+    "dovetailCount" : 2,
+    "dovetailLength" : 6 * millimeter,
+    "dovetailSpacing" : 2 * millimeter,
+    "dovetailLeadInEnabled" : false,
+    "dovetailLeadIn" : 0.2 * millimeter,
+    "dovetailStop" : false,
     "manufacturingMode" : KManufacturing.SINGLE,
     "modifierEnabled" : false,
     "modifierOnly" : false,
     "modifierSelection" : KCreaseSelection.ALL,
     "modifierWidth" : 8 * millimeter,
-    "modifierHeight" : 0.4 * millimeter,
-    "modifierDepth" : 1.2 * millimeter,
+    "modifierHeight" : 0.1 * millimeter,
+    "modifierDepth" : 0.4 * millimeter,
     "modifierOffset" : 0 * millimeter,
     "tpuSelection" : KCreaseSelection.ALL,
     "foldSpecific" : false,
@@ -170,7 +244,7 @@ const K_MANUFACTURING_DEFAULTS = {
     "colorManufacturingRoles" : true
 };
 
-annotation { "Feature Type Name" : "Kresling Engineering",
+annotation { "Feature Type Name" : "Codex Kresling V2",
     "Feature Type Description" : "Faceted design states and exact cut nets; not a rigid-folding simulation" }
 export const kreslingEngineering = defineFeature(function(context is Context, id is Id, definition is map)
 precondition
@@ -179,10 +253,15 @@ precondition
     {
         annotation { "Name" : "Generate", "Default" : KMode.FOLDED }
         definition.mode is KMode;
+        annotation { "Name" : "Material construction", "Default" : KManufacturing.SINGLE }
+        definition.manufacturingMode is KManufacturing;
+        annotation { "Name" : "Crease modifiers", "Default" : KModifierGeneration.AUTO,
+            "Description" : "Automatic follows the manufacturing mode. Disabled always suppresses slicer-only geometry." }
+        definition.modifierGeneration is KModifierGeneration;
         annotation { "Name" : "Crease guide sketches in net", "Default" : true }
         definition.guides is boolean;
     }
-    annotation { "Group Name" : "Basic Dimensions", "Collapsed By Default" : false }
+    annotation { "Group Name" : "Basic Kresling Geometry", "Collapsed By Default" : false }
     {
         annotation { "Name" : "Polygon sides" }
         isInteger(definition.sides, { (unitless) : [3, 6, 16] } as IntegerBoundSpec);
@@ -211,7 +290,7 @@ precondition
         isLength(definition.cellHeight, { (millimeter) : [5, 30, 300] } as LengthBoundSpec);
         }
     }
-    annotation { "Group Name" : "Kresling Geometry", "Collapsed By Default" : true }
+    annotation { "Group Name" : "Twist and End Plates", "Collapsed By Default" : true }
     {
         annotation { "Name" : "Cell twist / folding angle" }
         isAngle(definition.twist, { (degree) : [1, 75, 179] } as AngleBoundSpec);
@@ -285,7 +364,7 @@ precondition
             }
         }
     }
-    annotation { "Group Name" : "Hinge and Material Settings", "Collapsed By Default" : true }
+    annotation { "Group Name" : "Material and Hinge Settings", "Collapsed By Default" : true }
     {
         annotation { "Name" : "Panel thickness" }
         isLength(definition.panelT, { (millimeter) : [0.4, 1.2, 8] } as LengthBoundSpec);
@@ -362,28 +441,36 @@ precondition
     }
     annotation { "Group Name" : "Manufacturing and Connections", "Collapsed By Default" : true }
     {
-    annotation { "Group Name" : "Manufacturing Mode", "Collapsed By Default" : true }
+    annotation { "Group Name" : "Infill Modifier Settings", "Collapsed By Default" : true }
     {
-        annotation { "Name" : "Material construction", "Default" : KManufacturing.SINGLE }
-        definition.manufacturingMode is KManufacturing;
-    }
-    annotation { "Group Name" : "Crease Modifier Bodies", "Collapsed By Default" : true }
-    {
-        if (definition.manufacturingMode != KManufacturing.MULTI_MODIFIERS)
-        {
-        annotation { "Name" : "Generate slicer-only modifiers", "Default" : false }
+        annotation { "Name" : "Legacy modifier enable", "Default" : false, "UIHint" : UIHint.ALWAYS_HIDDEN }
         definition.modifierEnabled is boolean;
-        }
-        if (definition.manufacturingMode == KManufacturing.MULTI_MODIFIERS || definition.modifierEnabled)
+        if (definition.modifierGeneration == KModifierGeneration.ON || (definition.modifierGeneration == KModifierGeneration.AUTO && (definition.manufacturingMode == KManufacturing.MULTI_MODIFIERS || definition.modifierEnabled)))
         {
         annotation { "Name" : "Modifier crease types", "Default" : KCreaseSelection.ALL }
         definition.modifierSelection is KCreaseSelection;
+        annotation { "Name" : "Ribbon width input", "Default" : KModifierWidth.RELATIVE }
+        definition.modifierWidthMode is KModifierWidth;
+        if (definition.modifierWidthMode == KModifierWidth.RELATIVE)
+        {
+            annotation { "Name" : "Width multiplier", "Description" : "Multiplies the actual sum of both computed crease setbacks, including thickness clearance." }
+            isReal(definition.modifierWidthMultiplier, { (unitless) : [1.05, 1.5, 5] } as RealBoundSpec);
+        }
+        else
+        {
         annotation { "Name" : "Modifier width across crease" }
         isLength(definition.modifierWidth, { (millimeter) : [1, 8, 30] } as LengthBoundSpec);
-        annotation { "Name" : "Modifier height above inner reference" }
-        isLength(definition.modifierHeight, { (millimeter) : [0.1, 0.4, 10] } as LengthBoundSpec);
-        annotation { "Name" : "Modifier penetration from inner reference" }
-        isLength(definition.modifierDepth, { (millimeter) : [0.1, 1.2, 12] } as LengthBoundSpec);
+        }
+        annotation { "Name" : "Seam coverage", "Default" : KModifierCoverage.FULL }
+        definition.modifierCoverage is KModifierCoverage;
+        annotation { "Name" : "Start margin (inward)", "Description" : "Zero reaches the reference crease endpoint." }
+        isLength(definition.modifierStartMargin, { (millimeter) : [0, 0, 20] } as LengthBoundSpec);
+        annotation { "Name" : "End margin (inward)" }
+        isLength(definition.modifierEndMargin, { (millimeter) : [0, 0, 20] } as LengthBoundSpec);
+        annotation { "Name" : "Modifier surface allowance" }
+        isLength(definition.modifierHeight, { (millimeter) : [0, 0.1, 3] } as LengthBoundSpec);
+        annotation { "Name" : "Modifier penetration from hinge side" }
+        isLength(definition.modifierDepth, { (millimeter) : [0.1, 0.4, 8] } as LengthBoundSpec);
         annotation { "Name" : "Modifier offset from centerline" }
         isLength(definition.modifierOffset, { (millimeter) : [-10, 0, 10] } as LengthBoundSpec);
         }
@@ -439,8 +526,48 @@ precondition
     }
     annotation { "Group Name" : "Net End Connections", "Collapsed By Default" : true }
     {
-        annotation { "Name" : "Longitudinal seam", "Default" : KSeamConnection.OPEN, "Description" : "Eyelets are integrated into each edge; close them with cord after wrapping. No bridge crosses the flat net." }
+        annotation { "Name" : "Longitudinal seam", "Default" : KSeamConnection.OPEN, "Description" : "Choose lacing or a mating sliding dovetail after wrapping. No bridge crosses the flat net." }
         definition.seamConnection is KSeamConnection;
+    }
+    if (definition.seamConnection == KSeamConnection.DOVETAIL)
+    {
+    annotation { "Group Name" : "Loop Closure and Dovetail", "Collapsed By Default" : false }
+    {
+        annotation { "Name" : "Rail layout", "Default" : KDovetailLayout.SEGMENTED }
+        definition.dovetailLayout is KDovetailLayout;
+        annotation { "Name" : "Joint material", "Default" : KDovetailMaterial.RIGID }
+        definition.dovetailMaterial is KDovetailMaterial;
+        annotation { "Name" : "Head width" }
+        isLength(definition.dovetailWidth, { (millimeter) : [2.5, 4, 10] } as LengthBoundSpec);
+        annotation { "Name" : "Engagement depth" }
+        isLength(definition.dovetailDepth, { (millimeter) : [1, 2, 5] } as LengthBoundSpec);
+        annotation { "Name" : "Dovetail taper angle" }
+        isAngle(definition.dovetailAngle, { (degree) : [5, 15, 30] } as AngleBoundSpec);
+        annotation { "Name" : "Receiver wall thickness" }
+        isLength(definition.dovetailWall, { (millimeter) : [0.6, 1, 3] } as LengthBoundSpec);
+        annotation { "Name" : "Mating clearance per side" }
+        isLength(definition.dovetailClearance, { (millimeter) : [0.1, 0.2, 0.6] } as LengthBoundSpec);
+        annotation { "Name" : "Corner radius" }
+        isLength(definition.dovetailRadius, { (millimeter) : [0.05, 0.3, 0.8] } as LengthBoundSpec);
+        if (definition.dovetailLayout == KDovetailLayout.SEGMENTED)
+        {
+        annotation { "Name" : "Segments per cell seam" }
+        isInteger(definition.dovetailCount, { (unitless) : [1, 2, 6] } as IntegerBoundSpec);
+        annotation { "Name" : "Key length along seam" }
+        isLength(definition.dovetailLength, { (millimeter) : [3, 6, 30] } as LengthBoundSpec);
+        annotation { "Name" : "Minimum gap between keys" }
+        isLength(definition.dovetailSpacing, { (millimeter) : [0.5, 2, 12] } as LengthBoundSpec);
+        }
+        annotation { "Name" : "Chamfer the insertion end", "Default" : false }
+        definition.dovetailLeadInEnabled is boolean;
+        if (definition.dovetailLeadInEnabled)
+        {
+        annotation { "Name" : "Lead-in chamfer" }
+        isLength(definition.dovetailLeadIn, { (millimeter) : [0.05, 0.2, 0.6] } as LengthBoundSpec);
+        }
+        annotation { "Name" : "One-way axial end stop", "Default" : false, "Description" : "Stops further insertion in one direction; does not lock both axial directions or establish retention strength." }
+        definition.dovetailStop is boolean;
+    }
     }
     annotation { "Group Name" : "Tiling Connections", "Collapsed By Default" : true }
     {
@@ -459,8 +586,16 @@ precondition
     }
     if (definition.seamConnection == KSeamConnection.LACING || (definition.manufacturingMode == KManufacturing.MODULAR && definition.sectionConnection == KSectionConnection.LACING))
     {
-    annotation { "Group Name" : "Lacing Eyelet Dimensions", "Collapsed By Default" : true }
+    annotation { "Group Name" : "Connection Settings", "Collapsed By Default" : true }
     {
+        annotation { "Name" : "Connection hole layout", "Default" : KConnectionLayout.HORIZONTAL,
+            "Description" : "Hole centers follow net +X; every bore remains normal to its owning panel. The pattern is transported into the folded model." }
+        definition.connectionLayout is KConnectionLayout;
+        if (definition.connectionLayout == KConnectionLayout.HORIZONTAL)
+        {
+            annotation { "Name" : "Horizontal hole spacing" }
+            isLength(definition.connectionHolePitch, { (millimeter) : [3, 6, 30] } as LengthBoundSpec);
+        }
         annotation { "Name" : "Protruding assembly tabs (net only)", "Default" : false }
         definition.projectEyeletTabs is boolean;
         if (!definition.projectEyeletTabs)
@@ -468,9 +603,9 @@ precondition
             annotation { "Name" : "Eyelet collar height above panel" }
             isLength(definition.eyeletCollarHeight, { (millimeter) : [0, 0.4, 2] } as LengthBoundSpec);
         }
-        annotation { "Name" : "Eyelet width along edge" }
+        annotation { "Name" : "Collar diameter / tab width" }
         isLength(definition.seamEyeletW, { (millimeter) : [3, 5, 16] } as LengthBoundSpec);
-        annotation { "Name" : "Eyelet center inset / tab extension" }
+        annotation { "Name" : "Minimum collar inset / tab extension" }
         isLength(definition.seamEyeletDepth, { (millimeter) : [3, 5, 16] } as LengthBoundSpec);
         annotation { "Name" : "Lacing hole diameter" }
         isLength(definition.seamEyeletHoleD, { (millimeter) : [1, 2, 8] } as LengthBoundSpec);
@@ -478,11 +613,11 @@ precondition
         isInteger(definition.seamEyeletCount, { (unitless) : [1, 1, 6] } as IntegerBoundSpec);
     }
     }
-    annotation { "Group Name" : "Export Preparation", "Collapsed By Default" : true }
+    annotation { "Group Name" : "Export and Manufacturing", "Collapsed By Default" : true }
     {
         annotation { "Name" : "Color material and modifier roles", "Default" : true }
         definition.colorManufacturingRoles is boolean;
-        if (definition.manufacturingMode == KManufacturing.MULTI_MODIFIERS || definition.modifierEnabled)
+        if (definition.modifierGeneration == KModifierGeneration.ON || (definition.modifierGeneration == KModifierGeneration.AUTO && (definition.manufacturingMode == KManufacturing.MULTI_MODIFIERS || definition.modifierEnabled)))
         {
         annotation { "Name" : "Output only modifiers for separate export", "Default" : false }
         definition.modifierOnly is boolean;
@@ -506,7 +641,7 @@ precondition
     definition = mergeMaps(K_MANUFACTURING_DEFAULTS, definition);
     const splitMaterials = definition.manufacturingMode == KManufacturing.MULTI || definition.manufacturingMode == KManufacturing.MULTI_MODIFIERS;
     const modular = definition.manufacturingMode == KManufacturing.MODULAR;
-    const makeModifiers = definition.manufacturingMode == KManufacturing.MULTI_MODIFIERS || definition.modifierEnabled;
+    const makeModifiers = definition.modifierGeneration == KModifierGeneration.ON || (definition.modifierGeneration == KModifierGeneration.AUTO && (definition.manufacturingMode == KManufacturing.MULTI_MODIFIERS || definition.modifierEnabled));
     kManufacturingValidation(definition);
     const mm = millimeter;
     const n = definition.sides;
@@ -729,17 +864,24 @@ precondition
                 retained = append(retained, cr);
         links = retained;
     }
+    var printFrames = flatFaces;
+    if (modular && definition.moduleLayout == KModuleLayout.SPACED)
+        printFrames = kSpaceModules(printFrames, definition);
+    const rowFrames = printFrames;
+    printFrames = kPlaceNet(printFrames, definition.netAngle / radian);
+    for (var i = 0; i < size(faces); i += 1)
+    {
+        faces[i].netPts = rowFrames[i].pts;
+        printFrames[i].netPts = rowFrames[i].pts;
+    }
     if (definition.mode == KMode.NET)
     {
-        faces = flatFaces;
-        if (modular && definition.moduleLayout == KModuleLayout.SPACED)
-            faces = kSpaceModules(faces, definition);
+        faces = printFrames;
         for (var a = 0; a < size(faces); a += 1)
             for (var b = a + 1; b < size(faces); b += 1)
                 if (kOverlap2d(faces[a].pts, faces[b].pts))
                     throw regenError("The exact cut net overlaps between faces " ~ (a + 1) ~ " and " ~ (b + 1) ~
                                      ". Change seam, twist or profile; alternatively export cells separately.", ["seam", "twist", "profile"]);
-        faces = kPlaceNet(faces, definition.netAngle / radian);
     }
 
     // Validate the complete inset polygon against EVERY original half-plane.
@@ -801,7 +943,9 @@ precondition
                 continue;
             const edge = cut.a == i ? cut.ia : cut.ib;
             const eyeletId = panelId + ("eyelets" ~ eyeletIndex);
-            eyeletHoles = concatenateArrays([eyeletHoles, kEyelets(context, eyeletId, f, edge, gaps[i], cut.a == i, definition)]);
+            eyeletHoles = concatenateArrays([eyeletHoles, kEyelets(context, eyeletId, f, edge, gaps[i], cut.a == i,
+                { "face" : faces[cut.a == i ? cut.b : cut.a], "edge" : cut.a == i ? cut.ib : cut.ia,
+                  "gaps" : gaps[cut.a == i ? cut.b : cut.a], "ownGap" : gaps[i][edge] }, definition)]);
             pieces = append(pieces, qBodyType(qCreatedBy(eyeletId, EntityType.BODY), BodyType.SOLID));
             eyeletIndex += 1;
         }
@@ -809,7 +953,7 @@ precondition
             opBoolean(context, panelId + "merge", { "tools" : qUnion(pieces), "operationType" : BooleanOperationType.UNION });
         const panel = qBodyType(qCreatedBy(panelId, EntityType.BODY), BodyType.SOLID);
         for (var h = 0; h < size(eyeletHoles); h += 1)
-            kCircleCut(context, panelId + ("lacingHole" ~ h), panel, eyeletHoles[h].center, f.n,
+            kCircleCut(context, panelId + ("lacingHole" ~ h), panel, eyeletHoles[h].start, eyeletHoles[h].axis,
                 definition.seamEyeletHoleD / mm / 2, eyeletHoles[h].depth);
         const r = f.cap ? holeR : ventR;
         if (r > 0)
@@ -825,11 +969,39 @@ precondition
             throw regenError("Panel reinforcement or attachment did not form one solid. Reduce accessory dimensions.");
         var keepouts = [];
         for (var hole in eyeletHoles)
-            keepouts = append(keepouts, { "center" : hole.center, "radius" : definition.seamEyeletHoleD / mm / 2 });
+            keepouts = append(keepouts, { "center" : hole.keepoutCenter, "radius" : hole.keepoutRadius });
         if (r > 0)
             keepouts = append(keepouts, { "center" : kCentroid(shape), "radius" : r });
         panelHoleKeepouts = append(panelHoleKeepouts, keepouts);
         panelQueries = append(panelQueries, panel);
+    }
+    var closureTPU = [];
+    var closureParts = [];
+    var closureBodies = [];
+    if (definition.seamConnection == KSeamConnection.DOVETAIL)
+    {
+        for (var cut in creases)
+            if (!faces[cut.a].cap && !faces[cut.b].cap && faces[cut.a].cell == faces[cut.b].cell &&
+                abs(faces[cut.a].order - faces[cut.b].order) == 2 * n - 1)
+                closureParts = concatenateArrays([closureParts,
+                    kDovetailPair(context, id + ("closure" ~ faces[cut.a].cell), cut, faces, gaps, panelQueries, panelHoleKeepouts, definition)]);
+        for (var i = 0; i < size(closureParts); i += 1)
+        {
+            const part = closureParts[i];
+            for (var j = 0; j < size(panelQueries); j += 1)
+                if (j != part.owner && kHasVolumeContact(context, part.body, panelQueries[j]))
+                    throw regenError("A dovetail support hits another panel. Reduce joint size or increase the tube dimensions.");
+            for (var j = 0; j < i; j += 1)
+                if (kHasVolumeContact(context, part.body, closureParts[j].body))
+                    throw regenError("Dovetail segments or support arms interfere.");
+        }
+        for (var i = 0; i < size(closureParts); i += 1)
+        {
+            const part = closureParts[i];
+            closureBodies = append(closureBodies, part.body);
+            if (part.tpu)
+                closureTPU = append(closureTPU, part.body);
+        }
     }
     // Exact solid contact checks at this DESIGN STATE, not a motion sweep.
     const panels = qUnion(panelQueries);
@@ -844,9 +1016,10 @@ precondition
     }
 
     var hingeQueries = [];
-    var tpuQueries = [];
+    var tpuQueries = closureTPU;
     var rigidHingeQueries = [];
     var hingeOwners = [];
+    var hingeCreaseIds = [];
     var modifierSpecs = [];
     var guideData = [];
     for (var k = 0; k < size(links); k += 1)
@@ -949,13 +1122,14 @@ precondition
             for (var j = 0; j < size(panelQueries); j += 1)
                 if (j != cr.a && j != cr.b)
                     forbidden = append(forbidden, panelQueries[j]);
-            forbidden = concatenateArrays([forbidden, hingeQueries]);
+            forbidden = concatenateArrays([forbidden, hingeQueries, closureBodies]);
             if (size(forbidden) > 0 && size(evCollision(context, { "tools" : web, "targets" : qUnion(forbidden) })) > 0)
                 throw regenError("A hinge or anchor contacts a different panel or hinge. Increase relief, reduce anchor size or change geometry.", ["relief", "anchorHeadD", "compression"]);
             if (!kHasVolumeContact(context, web, panelQueries[cr.a]) || !kHasVolumeContact(context, web, panelQueries[cr.b]))
                 throw regenError("A hinge does not overlap both intended panels.", ["overlap"]);
             hingeQueries = append(hingeQueries, web);
             hingeOwners = append(hingeOwners, kModuleOf(fA, definition));
+            hingeCreaseIds = append(hingeCreaseIds, cr.manufacturingId);
             if (flexible)
             {
                 tpuQueries = append(tpuQueries, web);
@@ -966,20 +1140,36 @@ precondition
         }
         if (makeModifiers && kSelectCrease(cr, faces, mountain, definition.modifierSelection, definition))
         {
-            // A box as wide as the modifier can reach adjacent facets near a
-            // crease endpoint. Reserve an additional half-width at both ends.
-            const modifierMargin = max(definition.relief / mm, definition.modifierWidth / mm / 2 + abs(definition.modifierOffset / mm));
-            const modifierLength = interval[1] - interval[0] - 2 * modifierMargin;
-            if (modifierLength < 1)
-                throw regenError("A modifier leaves no usable crease length after endpoint clearance. Reduce modifier width or increase the cell size.", ["modifierWidth"]);
-            const spec = { "crease" : cr, "start" : P0 + (interval[0] + modifierMargin) * ev, "ev" : ev, "uA" : uA,
-                "length" : modifierLength, "nA" : fA.n, "nB" : fB.n, "tA" : fA.t, "tB" : fB.t, "uB" : uB, "gA" : gA, "gB" : gB };
-            const modifier = kModifier(context, id + ("modifier" ~ k), spec, panelQueries[cr.a], panelQueries[cr.b],
-                qSubtraction(panels, qUnion([panelQueries[cr.a], panelQueries[cr.b]])), definition);
-            modifierSpecs = append(modifierSpecs, modifier);
+            const from = (definition.modifierCoverage == KModifierCoverage.FULL ? 0 : interval[0]) + definition.modifierStartMargin / mm;
+            const to = (definition.modifierCoverage == KModifierCoverage.FULL ? norm(P1 - P0) : interval[1]) - definition.modifierEndMargin / mm;
+            if (to - from < 0.5)
+                throw regenError("Modifier margins leave less than 0.5 mm of coverage.", ["modifierStartMargin", "modifierEndMargin"]);
+            const spec = { "crease" : cr, "start" : P0 + from * ev, "ev" : ev, "length" : to - from,
+                "faceA" : fA, "faceB" : fB, "gapsA" : gaps[cr.a], "gapsB" : gaps[cr.b],
+                "uA" : uA, "uB" : uB, "gA" : gA, "gB" : gB, "outer" : cr.outer };
+            modifierSpecs = append(modifierSpecs, spec);
         }
         guideData = append(guideData, { "a" : P0, "b" : P1, "mountain" : mountain });
     }
+    for (var i = 0; i < size(modifierSpecs); i += 1)
+    {
+        const spec = modifierSpecs[i];
+        var unrelated = [qUnion(closureBodies), qSubtraction(panels, qUnion([panelQueries[spec.crease.a], panelQueries[spec.crease.b]]))];
+        for (var h = 0; h < size(hingeQueries); h += 1)
+            if (hingeCreaseIds[h] != spec.crease.manufacturingId)
+                unrelated = append(unrelated, hingeQueries[h]);
+        kModifier(context, id + ("modifier" ~ i), spec, panelQueries[spec.crease.a], panelQueries[spec.crease.b], qUnion(unrelated), definition);
+    }
+    // Keep the joint bodies distinct during all crease-interference checks;
+    // otherwise fusing a receiver into an owner could hide a blocked hinge.
+    for (var i = 0; i < size(closureParts); i += 1)
+        if (!closureParts[i].tpu)
+        {
+            const part = closureParts[i];
+            panelQueries[part.owner] = kJoinBodies(context, id + ("closureOwner" ~ i), [panelQueries[part.owner], part.body]);
+            if (size(evaluateQuery(context, panelQueries[part.owner])) != 1)
+                throw regenError("A loop-closure half is disconnected from its owning panel.");
+        }
     var printed = [];
     if (splitMaterials)
     {
@@ -1080,6 +1270,7 @@ function kFace(ids is array, vertices is array, t is number, interior is Vector,
     if (dot(n, interior - c) < 0)
         n = -n;
     return { "pts" : pts, "ids" : ids, "n" : n, "c" : c, "t" : t,
+             "referencePts" : pts, "referenceN" : n, "referenceC" : c,
              "cell" : cell, "order" : order, "cap" : cap };
 }
 
@@ -1488,11 +1679,25 @@ function kManufacturingValidation(d is map)
             (d.webProfile == KWebProfile.SEGMENTED && (d.segmentLength < d.anchorBeamW + 0.2 * mm || d.segmentLength + d.clearance >= d.anchorMinPitch)))
             throw regenError("Anchors must extend past the web overlap; segments must fit the beam and leave space between segments.", ["anchorEngagement", "overlap", "segmentLength"]);
     }
+    if (d.seamConnection == KSeamConnection.DOVETAIL)
+    {
+        const neck = d.dovetailWidth - 2 * d.dovetailDepth * tan(d.dovetailAngle);
+        const cornerLoss = d.dovetailRadius * (1 / tan((90 * degree - d.dovetailAngle) / 2) - 1);
+        const capture = (d.dovetailWidth - neck) / 2 - cornerLoss - d.dovetailClearance;
+        if (neck < 2 * d.minWall || capture < 0.2 * mm || d.dovetailWall < d.minWall)
+            throw regenError("Dovetail neck, receiver wall or remaining undercut is too small. Adjust width, depth, angle or clearance.", ["dovetailWidth", "dovetailAngle", "dovetailClearance", "dovetailWall"]);
+        if (d.dovetailMaterial == KDovetailMaterial.TPU_MALE && !split)
+            throw regenError("A TPU-assisted dovetail requires a PLA/TPU manufacturing mode.", ["manufacturingMode", "dovetailMaterial"]);
+        if (d.dovetailLeadInEnabled && d.dovetailLeadIn >= min(d.dovetailRadius, d.dovetailWall / 3))
+            throw regenError("Lead-in chamfer must be smaller than the corner radius and one-third of receiver wall thickness.", ["dovetailLeadIn"]);
+    }
     const laced = d.seamConnection == KSeamConnection.LACING ||
         (d.manufacturingMode == KManufacturing.MODULAR && d.sectionConnection == KSectionConnection.LACING);
     if (laced && (d.seamEyeletW < d.seamEyeletHoleD + 2 * d.minWall ||
         d.seamEyeletDepth < (d.projectEyeletTabs ? d.seamEyeletW : d.seamEyeletW / 2 + d.minWall)))
         throw regenError("Eyelets require a printable hole ligament and enough inset or extension for the selected arrangement.", ["seamEyeletW", "seamEyeletDepth", "seamEyeletHoleD"]);
+    if (laced && d.connectionLayout == KConnectionLayout.HORIZONTAL && d.connectionHolePitch < d.seamEyeletW + d.clearance)
+        throw regenError("Horizontal hole spacing must exceed collar width plus clearance.", ["connectionHolePitch", "seamEyeletW"]);
     if (laced && d.projectEyeletTabs && d.mode != KMode.NET)
         throw regenError("Protruding eyelet tabs are a flat assembly option. Use inset eyelets for a folded-compatible lacing seam.", ["projectEyeletTabs"]);
     if (d.manufacturingMode == KManufacturing.MODULAR && d.mode == KMode.NET)
@@ -1581,7 +1786,7 @@ function kClipAnchor(interval is array, face is map, gaps is array, origin is Ve
         if (abs(slope) < 1e-9)
         {
             if (need > 1e-6)
-                throw regenError("An anchor head does not fit inside a panel with its edge ligament.", ["anchorEngagement", "anchorHeadD"]);
+                throw regenError("A connection footprint does not fit its panel. Increase inset or panel size, or reduce the anchor/boss width.", ["anchorEngagement", "anchorHeadD", "seamEyeletDepth", "seamEyeletW"]);
         }
         else if (slope > 0)
             interval[0] = max(interval[0], need / slope);
@@ -1675,7 +1880,7 @@ function kNeedsEyelets(cr is map, faces is array, d is map) returns boolean
     return d.seamConnection == KSeamConnection.LACING && abs(a.order - b.order) == 2 * d.sides - 1;
 }
 
-function kEyelets(context is Context, id is Id, face is map, edge is number, gaps is array, firstSide is boolean, d is map) returns array
+function kEyelets(context is Context, id is Id, face is map, edge is number, gaps is array, firstSide is boolean, peer is map, d is map) returns array
 {
     const mm = millimeter;
     const p0 = face.pts[edge];
@@ -1684,27 +1889,50 @@ function kEyelets(context is Context, id is Id, face is map, edge is number, gap
     const u = kEdgeInward(face.pts, edge, face.c);
     const radius = d.seamEyeletW / mm / 2;
     const gap = gaps[edge];
+    const horizontal = d.connectionLayout == KConnectionLayout.HORIZONTAL;
+    const row = kConnectionRowDirection(face);
+    const pitch = d.connectionHolePitch / mm;
+    const targetDepth = kEyeletTargetDepth(face, edge, gap, d);
     var interval = [radius + d.clearance / mm, norm(p1 - p0) - radius - d.clearance / mm];
-    if (d.projectEyeletTabs)
+    if (horizontal)
+    {
+        for (var i = 0; i < d.seamEyeletCount; i += 1)
+        {
+            const delta = (i - (d.seamEyeletCount - 1) / 2) * pitch * row;
+            if (d.projectEyeletTabs)
+                interval = kClipAttachment(interval, face, edge, gaps, p0 + dot(delta, ev) * ev, ev, u, gap, d.overlap / mm, radius);
+            else
+                interval = kClipAnchor(interval, face, gaps, p0, ev, targetDepth * u + delta,
+                    radius + max(d.minWall / mm, d.roundPanels ? d.cornerR / mm : 0));
+        }
+    }
+    else if (d.projectEyeletTabs)
         interval = kClipAttachment(interval, face, edge, gaps, p0, ev, u, gap, d.overlap / mm, radius);
     else
-        interval = kClipAnchor(interval, face, gaps, p0, ev, (gap + d.seamEyeletDepth / mm) * u,
+        interval = kClipAnchor(interval, face, gaps, p0, ev, targetDepth * u,
             radius + max(d.minWall / mm, d.roundPanels ? d.cornerR / mm : 0));
     const length = interval[1] - interval[0];
-    if (length / (2 * d.seamEyeletCount) < 2 * radius + d.clearance / mm)
-        throw regenError("Staggered eyelets do not fit the boundary with the requested clearance. Reduce count or width.", ["seamEyeletCount", "seamEyeletW"]);
+    if (length < 0 || (!horizontal && length / (2 * d.seamEyeletCount) < 2 * radius + d.clearance / mm))
+        throw regenError("The connection-hole pattern does not fit its panel. Reduce count/spacing or increase inset or panel size.", ["seamEyeletCount", "connectionHolePitch", "seamEyeletDepth"]);
     const ascending = face.ids[edge] < face.ids[(edge + 1) % size(face.ids)];
+    var rowDistance = (interval[0] + interval[1]) / 2;
+    if (horizontal && face.cell == peer.face.cell)
+        rowDistance = kPairedRowStation(face, edge, interval, peer, d);
     var holes = [];
     for (var i = 0; i < d.seamEyeletCount; i += 1)
     {
         const fraction = (2 * i + (firstSide ? 0.5 : 1.5)) / (2 * d.seamEyeletCount);
-        const distance = ascending ? interval[0] + length * fraction : interval[1] - length * fraction;
+        const distance = horizontal ? rowDistance :
+            (ascending ? interval[0] + length * fraction : interval[1] - length * fraction);
+        const delta = horizontal ? (i - (d.seamEyeletCount - 1) / 2) * pitch * row : vector(0, 0, 0);
         const base = p0 + distance * ev;
-        const center = base + (d.projectEyeletTabs ? -d.seamEyeletDepth / mm + radius : gap + d.seamEyeletDepth / mm) * u;
+        const center = base + targetDepth * u + delta;
         const partId = id + ("eyelet" ~ i);
         if (d.projectEyeletTabs)
         {
-            const neck = kRectangle(base, ev, u, -radius, radius, -d.seamEyeletDepth / mm + radius, gap + d.overlap / mm);
+            const neckBase = base + dot(delta, ev) * ev;
+            const neckDepth = targetDepth + dot(delta, u);
+            const neck = kRectangle(neckBase, ev, u, -radius, radius, neckDepth, gap + d.overlap / mm);
             kExtrudePoly(context, partId + "neck", neck, face.n, face.t);
         }
         const collar = d.projectEyeletTabs ? 0 : d.eyeletCollarHeight / mm;
@@ -1713,52 +1941,457 @@ function kEyelets(context is Context, id is Id, face is map, edge is number, gap
         if (ventilationR > 0 && norm(center - kCentroid(kInset(face.pts, gaps, face.c))) < ventilationR + d.seamEyeletHoleD / mm / 2 + d.ligament / mm)
             throw regenError("A lacing eyelet leaves insufficient ligament to a ventilation hole.", ["ventD", "seamEyeletDepth"]);
         const rib = d.ribs ? d.ribH / mm : 0;
-        holes = append(holes, { "center" : center, "depth" : face.t + max(collar, rib) });
+        holes = append(holes, { "center" : center, "keepoutCenter" : center, "keepoutRadius" : d.seamEyeletHoleD / mm / 2,
+            "start" : center, "axis" : face.n, "depth" : face.t + max(collar, rib) });
     }
-    // Cut after the collar has been united with the owner, otherwise the
-    // underlying panel would fill the collar's hole again.
     return holes;
+}
+
+// Intersect a convex panel footprint with a half-plane, without new CAD bodies.
+function kClipFootprint(pts is array, origin is Vector, inward is Vector) returns array
+{
+    if (size(pts) == 0)
+        return [];
+    var out = [];
+    for (var i = 0; i < size(pts); i += 1)
+    {
+        const a = pts[i];
+        const b = pts[(i + 1) % size(pts)];
+        const da = dot(a - origin, inward);
+        const db = dot(b - origin, inward);
+        if (da >= -1e-8)
+            out = append(out, a);
+        if ((da > 1e-8 && db < -1e-8) || (da < -1e-8 && db > 1e-8))
+            out = append(out, a + da / (da - db) * (b - a));
+    }
+    var clean = [];
+    for (var p in out)
+        if (size(clean) == 0 || norm(p - clean[size(clean) - 1]) > 1e-6)
+            clean = append(clean, p);
+    if (size(clean) > 1 && norm(clean[0] - clean[size(clean) - 1]) < 1e-6)
+        clean = subArray(clean, 0, size(clean) - 1);
+    return clean;
+}
+
+function kRibbonOffset(nA is Vector, nB is Vector, a is number, b is number) returns Vector
+{
+    if (dot(nA, nB) > 0.999999)
+        return (a + b) / 2 * nA;
+    return kOffset(nA, nB, a, b);
 }
 
 function kModifier(context is Context, id is Id, spec is map, panelA is Query, panelB is Query, otherPanels is Query, d is map) returns Query
 {
-    if (norm(spec.nA + spec.nB) < 1e-5)
-        throw regenError("Modifier orientation is ill-conditioned at this crease. Change the design state.");
-    const normal = normalize(spec.nA + spec.nB);
-    var across = normalize(cross(normal, spec.ev));
-    if (dot(across, spec.uA) < 0)
-        across = -across;
-    var shift = (spec.tA + spec.tB) / 2 * normal;
-    if (abs(dot(spec.nA, spec.nB)) < 0.999999)
-        shift = kOffset(spec.nA, spec.nB, spec.tA, spec.tB);
-    const origin = spec.start + shift + d.modifierOffset / millimeter * across;
-    // Require a finite band inside both panel footprints, not a nearly
-    // tangent touch that might disappear in a slicer or mesh export.
-    const coverage = d.minWall / millimeter / 2;
-    for (var side in [{ "n" : spec.nA, "t" : spec.tA, "u" : spec.uA, "g" : spec.gA },
-                     { "n" : spec.nB, "t" : spec.tB, "u" : spec.uB, "g" : spec.gB }])
+    const mm = millimeter;
+    const a = spec.faceA;
+    const b = spec.faceB;
+    const gapWidth = spec.gA + spec.gB;
+    const width = d.modifierWidthMode == KModifierWidth.RELATIVE ? gapWidth * d.modifierWidthMultiplier : d.modifierWidth / mm;
+    const extraA = (width - gapWidth) / 2 + d.modifierOffset / mm;
+    const extraB = (width - gapWidth) / 2 - d.modifierOffset / mm;
+    if (min(extraA, extraB) < 0.02)
+        throw regenError("The ribbon must overlap both panel edges. Increase width multiplier or reduce offset.", ["modifierWidthMultiplier", "modifierWidth", "modifierOffset"]);
+    const allowance = d.modifierHeight / mm;
+    const lowA = spec.outer ? -allowance : max(0, a.t - d.modifierDepth / mm);
+    const lowB = spec.outer ? -allowance : max(0, b.t - d.modifierDepth / mm);
+    const highA = spec.outer ? min(a.t, d.modifierDepth / mm) : a.t + allowance;
+    const highB = spec.outer ? min(b.t, d.modifierDepth / mm) : b.t + allowance;
+    const wa = spec.gA + min(extraA, 0.03);
+    const wb = spec.gB + min(extraB, 0.03);
+    const p = spec.start;
+    const lowMiddle = p + kRibbonOffset(a.n, b.n, lowA, lowB);
+    const highMiddle = p + kRibbonOffset(a.n, b.n, highA, highB);
+    const section = [p + wa * spec.uA + lowA * a.n, lowMiddle, p + wb * spec.uB + lowB * b.n,
+        p + wb * spec.uB + highB * b.n, highMiddle, p + wa * spec.uA + highA * a.n];
+    kExtrudePoly(context, id + "spine", section, spec.ev, spec.length);
+    var pieces = [qCreatedBy(id + "spine" + "ext", EntityType.BODY)];
+    const sides = [{ "face" : a, "gaps" : spec.gapsA, "u" : spec.uA, "extent" : spec.gA + extraA, "low" : lowA, "high" : highA },
+                   { "face" : b, "gaps" : spec.gapsB, "u" : spec.uB, "extent" : spec.gB + extraB, "low" : lowB, "high" : highB }];
+    for (var i = 0; i < 2; i += 1)
     {
-        const penetration = min(side.t, d.modifierDepth / millimeter);
-        for (var widthFraction in [0.5, 1])
-            for (var depthFraction in [0.25, 0.5])
-            {
-                const point = spec.start + (side.g + coverage * widthFraction) * side.u +
-                    (side.t - penetration * depthFraction) * side.n;
-                const relative = point - origin;
-                if (abs(dot(relative, across)) > d.modifierWidth / millimeter / 2 - 1e-6 ||
-                    dot(relative, normal) < -d.modifierDepth / millimeter + 1e-6 ||
-                    dot(relative, normal) > d.modifierHeight / millimeter - 1e-6)
-                    throw regenError("Modifier coverage is too shallow or narrow for a finite panel region. Increase width, height or penetration, or reduce offset.", ["modifierWidth", "modifierDepth", "modifierHeight", "modifierOffset"]);
-            }
+        const side = sides[i];
+        var footprint = kInset(side.face.pts, side.gaps, side.face.c);
+        footprint = kClipFootprint(footprint, p, spec.ev);
+        footprint = kClipFootprint(footprint, p + spec.length * spec.ev, -spec.ev);
+        footprint = kClipFootprint(footprint, p + side.extent * side.u, -side.u);
+        if (size(footprint) < 3 || norm(cross(footprint[1] - footprint[0], footprint[2] - footprint[0])) < 1e-8)
+            continue;
+        var shifted = [];
+        for (var point in footprint)
+            shifted = append(shifted, point + side.low * side.face.n);
+        const wingId = id + ("wing" ~ i);
+        kExtrudePoly(context, wingId, shifted, side.face.n, side.high - side.low);
+        pieces = append(pieces, qCreatedBy(wingId + "ext", EntityType.BODY));
     }
-    const poly = kRectangle(origin, across, normal, -d.modifierWidth / millimeter / 2, d.modifierWidth / millimeter / 2,
-                            -d.modifierDepth / millimeter, d.modifierHeight / millimeter);
-    kExtrudePoly(context, id, poly, spec.ev, spec.length);
-    const modifier = qCreatedBy(id + "ext", EntityType.BODY);
-    if (!kHasVolumeContact(context, modifier, panelA) || !kHasVolumeContact(context, modifier, panelB))
-        throw regenError("A modifier misses one of its intended panels. Increase width/depth or reduce offset.", ["modifierWidth", "modifierDepth", "modifierOffset"]);
-    if (kHasVolumeContact(context, modifier, otherPanels))
-        throw regenError("A modifier reaches an unrelated panel. Increase hinge end relief or reduce modifier width.", ["relief", "modifierWidth"]);
-    kNameBodies(context, modifier, "MODIFIER_ONLY_NOT_PRINT__crease_" ~ spec.crease.manufacturingId, color(0.95, 0.55, 0.1), d);
-    return modifier;
+    const ribbon = kJoinBodies(context, id + "union", pieces);
+    // Only the modifier is trimmed. Structural panels are never modified by a
+    // slicer volume, and a full-length spine replaces the old end shortening.
+    if (kHasVolumeContact(context, ribbon, otherPanels))
+        opBoolean(context, id + "excludeUnrelated", { "tools" : otherPanels, "targets" : ribbon,
+            "operationType" : BooleanOperationType.SUBTRACTION, "keepTools" : true });
+    if (size(evaluateQuery(context, ribbon)) != 1)
+        throw regenError("Clipping this ribbon would interrupt continuous seam coverage. Reduce ribbon width/depth or change the design.");
+    if (!kHasVolumeContact(context, ribbon, panelA) || !kHasVolumeContact(context, ribbon, panelB))
+        throw regenError("The ribbon does not cover both intended panels. Increase its width or penetration.", ["modifierWidthMultiplier", "modifierDepth"]);
+    const middle = (lowMiddle + highMiddle) / 2;
+    for (var fraction in [0.001, 0.25, 0.5, 0.75, 0.999])
+        if (size(evaluateQuery(context, qContainsPoint(ribbon, (middle + fraction * spec.length * spec.ev) * mm))) == 0)
+            throw regenError("An unrelated panel cuts across the ribbon centerline. Adjust the design or use printed-hinge coverage.", ["modifierCoverage", "modifierDepth"]);
+    const box = evBox3d(context, { "topology" : ribbon,
+        "cSys" : coordSystem(p * mm, spec.ev, a.n), "tight" : true });
+    if (abs(box.minCorner[0] / mm) > 1e-5 || abs(box.maxCorner[0] / mm - spec.length) > 1e-5)
+        throw regenError("Modifier clipping lost an endpoint. Increase the explicit end margin or reduce depth.", ["modifierStartMargin", "modifierEndMargin"]);
+    kNameBodies(context, ribbon, "MODIFIER_ONLY_NOT_PRINT__crease_" ~ spec.crease.manufacturingId, color(0.95, 0.55, 0.1), d);
+    return ribbon;
+}
+
+function kReferencePoint(face is map, point is Vector) returns Vector
+{
+    const o = face.referencePts[0];
+    const x = normalize(face.referencePts[1] - o);
+    const y = cross(face.referenceN, x);
+    const nx = normalize(face.pts[1] - face.pts[0]);
+    const ny = cross(face.n, nx);
+    const relative = point - o;
+    return face.pts[0] + dot(relative, x) * nx + dot(relative, y) * ny + dot(relative, face.referenceN) * face.n;
+}
+
+function kConnectionRowDirection(face is map) returns Vector
+{
+    const netX = normalize(face.netPts[1] - face.netPts[0]);
+    const netY = cross(vector(0, 0, 1), netX);
+    const currentX = normalize(face.pts[1] - face.pts[0]);
+    const currentY = cross(face.n, currentX);
+    return normalize(dot(vector(1, 0, 0), netX) * currentX + dot(vector(1, 0, 0), netY) * currentY);
+}
+
+function kReferenceFace(face is map) returns map
+{
+    return mergeMaps(face, { "pts" : face.referencePts, "n" : face.referenceN, "c" : face.referenceC });
+}
+
+function kMoveFromReference(context is Context, id is Id, bodies is Query, face is map)
+{
+    const referenceSystem = coordSystem(face.referencePts[0] * millimeter, normalize(face.referencePts[1] - face.referencePts[0]), face.referenceN);
+    const currentSystem = coordSystem(face.pts[0] * millimeter, normalize(face.pts[1] - face.pts[0]), face.n);
+    opTransform(context, id, { "bodies" : bodies, "transform" : toWorld(currentSystem) * fromWorld(referenceSystem) });
+}
+
+function kHull(points is array, normal is Vector) returns array
+{
+    var pts = [];
+    for (var p in points)
+    {
+        var duplicate = false;
+        for (var q in pts)
+            if (norm(p - q) < 1e-7)
+                duplicate = true;
+        if (!duplicate)
+            pts = append(pts, p);
+    }
+    var first = 0;
+    const x = normalize(pts[1] - pts[0]);
+    const y = cross(normal, x);
+    for (var i = 1; i < size(pts); i += 1)
+        if (dot(pts[i], x) < dot(pts[first], x) - 1e-8 ||
+            (abs(dot(pts[i] - pts[first], x)) < 1e-8 && dot(pts[i], y) < dot(pts[first], y)))
+            first = i;
+    var out = [];
+    var current = first;
+    for (var step = 0; step <= size(pts); step += 1)
+    {
+        out = append(out, pts[current]);
+        var next = (current + 1) % size(pts);
+        for (var i = 0; i < size(pts); i += 1)
+        {
+            if (i == current)
+                continue;
+            const turn = dot(normal, cross(pts[next] - pts[current], pts[i] - pts[current]));
+            if (turn < -1e-8 || (abs(turn) < 1e-8 && norm(pts[i] - pts[current]) > norm(pts[next] - pts[current])))
+                next = i;
+        }
+        current = next;
+        if (current == first)
+            return out;
+    }
+    throw regenError("A joint support profile could not be constructed.");
+}
+
+function kOutsetConvex(pts is array, distance is number) returns array
+{
+    const c = kCentroid(pts);
+    var out = [];
+    for (var i = 0; i < size(pts); i += 1)
+    {
+        const u = kEdgeInward(pts, (i + size(pts) - 1) % size(pts), c);
+        const v = kEdgeInward(pts, i, c);
+        out = append(out, pts[i] - distance * (u + v) / (1 + dot(u, v)));
+    }
+    return out;
+}
+
+function kSketchPoint(point is Vector, origin is Vector, x is Vector, y is Vector) returns Vector
+{
+    return vector(dot(point - origin, x), dot(point - origin, y)) * millimeter;
+}
+
+// Analytic circular sketch arcs, not a faceted imitation of a corner fillet.
+function kExtrudeRounded(context is Context, id is Id, pts is array, dir is Vector, depth is number, radius is number)
+{
+    const count = size(pts);
+    const normal = normalize(cross(pts[1] - pts[0], pts[2] - pts[0]));
+    var corners = [];
+    for (var i = 0; i < count; i += 1)
+    {
+        const a = normalize(pts[(i + count - 1) % count] - pts[i]);
+        const b = normalize(pts[(i + 1) % count] - pts[i]);
+        const half = acos(max(-1, min(1, dot(a, b)))) / 2;
+        const tangent = radius / tan(half);
+        const center = pts[i] + radius / sin(half) * normalize(a + b);
+        const start = pts[i] + tangent * a;
+        const end = pts[i] + tangent * b;
+        const r0 = normalize(start - center);
+        const r1 = normalize(end - center);
+        const sweep = atan2(dot(normal, cross(r0, r1)), dot(r0, r1));
+        const mid = center + radius * (cos(sweep / 2) * r0 + sin(sweep / 2) * cross(normal, r0));
+        corners = append(corners, { "start" : start, "mid" : mid, "end" : end, "tangent" : tangent });
+    }
+    const x = normalize(pts[1] - pts[0]);
+    const y = cross(normalize(dir), x);
+    const origin = pts[0];
+    const sk = newSketchOnPlane(context, id + "sk", { "sketchPlane" : plane(origin * millimeter, dir, x) });
+    for (var i = 0; i < count; i += 1)
+    {
+        const next = (i + 1) % count;
+        if (corners[i].tangent + corners[next].tangent >= norm(pts[next] - pts[i]) - 1e-5)
+            throw regenError("Dovetail corner radius consumes a profile edge. Reduce the radius.", ["dovetailRadius"]);
+        skArc(sk, "arc" ~ i, { "start" : kSketchPoint(corners[i].start, origin, x, y),
+            "mid" : kSketchPoint(corners[i].mid, origin, x, y), "end" : kSketchPoint(corners[i].end, origin, x, y) });
+        skLineSegment(sk, "edge" ~ i, { "start" : kSketchPoint(corners[i].end, origin, x, y),
+            "end" : kSketchPoint(corners[next].start, origin, x, y) });
+    }
+    skSolve(sk);
+    if (size(evaluateQuery(context, qSketchRegion(id + "sk"))) != 1)
+        throw regenError("The rounded joint profile does not enclose one region.");
+    opExtrude(context, id + "ext", { "entities" : qSketchRegion(id + "sk"), "direction" : dir,
+        "endBound" : BoundingType.BLIND, "endDepth" : depth * millimeter });
+    opDeleteBodies(context, id + "del", { "entities" : qCreatedBy(id + "sk", EntityType.BODY) });
+}
+
+function kDovetailPair(context is Context, id is Id, cr is map, faces is array, gaps is array,
+                       panels is array, keepouts is array, d is map) returns array
+{
+    const mm = millimeter;
+    const a = faces[cr.a];
+    const b = faces[cr.b];
+    const ra = kReferenceFace(a);
+    const rb = kReferenceFace(b);
+    const ia = cr.ia;
+    const ib = cr.ib;
+    const ascending = ra.ids[ia] < ra.ids[(ia + 1) % size(ra.ids)];
+    const p0 = ra.pts[ascending ? ia : (ia + 1) % size(ra.pts)];
+    const p1 = ra.pts[ascending ? (ia + 1) % size(ra.pts) : ia];
+    const ev = normalize(p1 - p0);
+    if (norm(ra.n + rb.n) < 1e-5)
+        throw regenError("Dovetail seam normals are ill-conditioned. Change twist or use a lacing seam.");
+    const inside = normalize(ra.n + rb.n);
+    var across = normalize(cross(ev, inside));
+    const ua = kEdgeInward(ra.pts, ia, ra.c);
+    const ub = kEdgeInward(rb.pts, ib, rb.c);
+    if (dot(across, ub) < 0)
+        across = -across;
+    const normal = normalize(cross(across, inside));
+    const ga = gaps[cr.a][ia];
+    const gb = gaps[cr.b][ib];
+    const width = d.dovetailWidth / mm;
+    const depth = d.dovetailDepth / mm;
+    const wall = d.dovetailWall / mm;
+    const clearance = d.dovetailClearance / mm;
+    const radius = d.dovetailRadius / mm;
+    const neck = width - 2 * depth * tan(d.dovetailAngle);
+    const halfHeight = width / 2 + wall;
+    const maxX = depth + 2 * wall + clearance;
+    const height = halfHeight + max((a.t + clearance + maxX * abs(dot(across, ra.n))) / dot(inside, ra.n),
+                                   (b.t + clearance + maxX * abs(dot(across, rb.n))) / dot(inside, rb.n));
+    var interval = [d.relief / mm + clearance, norm(p1 - p0) - d.relief / mm - clearance - (d.dovetailStop ? wall : 0)];
+    interval = kClipAttachment(interval, ra, ia, gaps[cr.a], p0, ev, ua, ga, d.overlap / mm, radius);
+    interval = kClipAttachment(interval, rb, ib, gaps[cr.b], p0, ev, ub, gb, d.overlap / mm, radius);
+    const assisted = d.dovetailMaterial == KDovetailMaterial.TPU_MALE;
+    if (assisted)
+    {
+        const headRadius = d.anchorHeadD / mm / 2 * (d.anchorProfile == KAnchorProfile.BEAM_KEY ? sqrt(2) : 1);
+        interval = kClipAnchor(interval, ra, gaps[cr.a], p0, ev, (ga + d.anchorEngagement / mm) * ua,
+                               headRadius + d.anchorLigament / mm);
+    }
+    const available = interval[1] - interval[0];
+    const count = d.dovetailLayout == KDovetailLayout.CONTINUOUS ? 1 : d.dovetailCount;
+    const length = d.dovetailLayout == KDovetailLayout.CONTINUOUS ? available : d.dovetailLength / mm;
+    const occupied = length + 2 * clearance + (d.dovetailStop ? wall : 0);
+    if (length < 3 || available < length || (count > 1 && available / count < occupied + d.dovetailSpacing / mm))
+        throw regenError("Dovetail segments do not fit with receiver and insertion clearance. Reduce count/length or increase cell height.", ["dovetailCount", "dovetailLength", "dovetailSpacing"]);
+    var records = [];
+    for (var i = 0; i < count; i += 1)
+    {
+        const middle = (interval[0] + interval[1]) / 2 + (i - (count - 1) / 2) * available / count;
+        const from = middle - length / 2;
+        const origin = p0 + from * ev;
+        const joint = origin + height * inside;
+        const item = id + ("segment" ~ i);
+        const maleId = item + "male";
+        const femaleId = item + "female";
+        const trapezoid = [joint - neck / 2 * inside, joint + depth * across - width / 2 * inside,
+                           joint + depth * across + width / 2 * inside, joint + neck / 2 * inside];
+        kExtrudeRounded(context, maleId + "key", trapezoid, ev, length, radius);
+        if (d.dovetailLeadInEnabled)
+            opChamfer(context, maleId + "leadIn", { "entities" : qCapEntity(maleId + "key" + "ext", CapType.START, EntityType.EDGE),
+                "chamferType" : ChamferType.EQUAL_OFFSETS, "width" : d.dovetailLeadIn, "tangentPropagation" : false });
+        kExtrudePoly(context, maleId + "neck", kRectangle(joint, across, inside, -2 * wall - clearance, 0.2, -neck / 2, neck / 2), ev, length);
+        const dockA = kRectangle(joint, across, inside, -2 * wall - clearance, -wall - clearance, -neck / 2, neck / 2);
+        const rootA = kRectangle(origin, ua, ra.n, ga + 0.1, ga + d.overlap / mm, a.t - min(a.t, d.minWall / mm), a.t);
+        kExtrudePoly(context, maleId + "support", kHull(concatenateArrays([rootA, dockA]), normal), ev, length);
+        const male = kJoinBodies(context, maleId + "union", [qBodyType(qCreatedBy(maleId, EntityType.BODY), BodyType.SOLID)]);
+        const receiverStart = origin - clearance * ev;
+        const receiverJoint = joint - clearance * ev;
+        const receiverOuter = kRectangle(receiverJoint, across, inside, -wall, depth + wall, -halfHeight, halfHeight);
+        kExtrudeRounded(context, femaleId + "sleeve", receiverOuter, ev, length + 2 * clearance, min(radius, wall / 3));
+        const dockB = kRectangle(receiverJoint, across, inside, depth + 0.7 * wall, depth + wall, -width / 2, width / 2);
+        const rootB = kRectangle(receiverStart, ub, rb.n, gb + 0.1, gb + d.overlap / mm, b.t - min(b.t, d.minWall / mm), b.t);
+        kExtrudePoly(context, femaleId + "support", kHull(concatenateArrays([rootB, dockB]), normal), ev, length + 2 * clearance);
+        const female = kJoinBodies(context, femaleId + "union", [qBodyType(qCreatedBy(femaleId, EntityType.BODY), BodyType.SOLID)]);
+        var toolProfile = [];
+        for (var p in kOutsetConvex(trapezoid, clearance))
+            toolProfile = append(toolProfile, p - (clearance + 0.1) * ev);
+        kExtrudeRounded(context, item + "cavity", toolProfile, ev, length + 2 * clearance + 0.2, radius + clearance);
+        kExtrudePoly(context, item + "mouth", kRectangle(joint - (clearance + 0.1) * ev, across, inside,
+            -wall - 0.1, 0.25, -neck / 2 - clearance, neck / 2 + clearance), ev, length + 2 * clearance + 0.2);
+        opBoolean(context, item + "socketCut", { "tools" : qUnion([qCreatedBy(item + "cavity" + "ext", EntityType.BODY),
+            qCreatedBy(item + "mouth" + "ext", EntityType.BODY)]), "targets" : female, "operationType" : BooleanOperationType.SUBTRACTION });
+        if (d.dovetailStop)
+        {
+            var stop = [];
+            for (var p in receiverOuter)
+                stop = append(stop, p + (length + 2 * clearance - 0.01) * ev);
+            kExtrudeRounded(context, femaleId + "stop", stop, ev, wall + 0.01, min(radius, wall / 3));
+            kJoinBodies(context, femaleId + "stopUnion", [female, qCreatedBy(femaleId + "stop" + "ext", EntityType.BODY)]);
+        }
+        if (size(evaluateQuery(context, male)) != 1 || size(evaluateQuery(context, female)) != 1 || kHasVolumeContact(context, male, female))
+            throw regenError("The dovetail halves interfere or a support is disconnected. Adjust angle, clearance or dimensions.");
+        records = append(records, { "male" : male, "female" : female, "middle" : p0 + middle * ev, "length" : length });
+    }
+    var maleBodies = [];
+    var femaleBodies = [];
+    for (var record in records)
+    {
+        maleBodies = append(maleBodies, record.male);
+        femaleBodies = append(femaleBodies, record.female);
+    }
+    // Check sampled axial entry positions in the shared folded datum before
+    // mapping each side back to its own panel. This is not a folding simulation.
+    for (var step = 0; step < 3; step += 1)
+    {
+        const probeId = id + ("entryProbe" ~ step);
+        opPattern(context, probeId, { "entities" : qUnion(maleBodies),
+            "transforms" : [transform(-step / 2 * (length + 2 * clearance) * ev * mm)], "instanceNames" : ["probe"] });
+        const probe = qCreatedBy(probeId, EntityType.BODY);
+        if (kHasVolumeContact(context, probe, qUnion(femaleBodies)))
+            throw regenError("The dovetail insertion samples hit a receiver or stop. Increase key spacing or disable end stops.", ["dovetailSpacing", "dovetailStop"]);
+        opDeleteBodies(context, probeId + "delete", { "entities" : probe });
+    }
+    var out = [];
+    for (var i = 0; i < size(records); i += 1)
+    {
+        var record = records[i];
+        const transformId = id + ("mapped" ~ i);
+        kMoveFromReference(context, transformId + "male", record.male, a);
+        kMoveFromReference(context, transformId + "female", record.female, b);
+        if (assisted)
+        {
+            const anchorId = transformId + "anchor";
+            const base = kReferencePoint(a, record.middle);
+            const currentEv = normalize(kReferencePoint(a, record.middle + ev) - base);
+            const currentU = normalize(kReferencePoint(a, record.middle + ua) - base);
+            kAnchor(context, anchorId, a, keepouts[cr.a], base, currentEv, currentU, ga, false,
+                min((d.hingeControl == KHinge.THICKNESS ? d.hingeT : d.panelT - d.creaseDepth) / mm, 0.8 * a.t), panels[cr.a], d);
+            record.male = kJoinBodies(context, transformId + "anchorUnion", [record.male, qBodyType(qCreatedBy(anchorId, EntityType.BODY), BodyType.SOLID)]);
+            kNameBodies(context, record.male, "TPU__dovetail_male__cell_" ~ (a.cell + 1) ~ "__segment_" ~ (i + 1), color(0.15, 0.65, 0.4), d);
+        }
+        if (!kHasVolumeContact(context, record.male, panels[cr.a]) || !kHasVolumeContact(context, record.female, panels[cr.b]))
+            throw regenError("A dovetail support does not overlap its owning panel.");
+        if (size(evaluateQuery(context, record.male)) != 1 || size(evaluateQuery(context, record.female)) != 1)
+            throw regenError("A dovetail half is disconnected after mapping or anchoring.");
+        out = append(out, { "body" : record.male, "owner" : cr.a, "mate" : cr.b, "tpu" : assisted });
+        out = append(out, { "body" : record.female, "owner" : cr.b, "mate" : cr.a, "tpu" : false });
+    }
+    return out;
+}
+
+function kPairedRowStation(face is map, edge is number, interval is array, peer is map, d is map) returns number
+{
+    const mm = millimeter;
+    const other = peer.face;
+    const ownNetEdge = normalize(face.netPts[(edge + 1) % size(face.netPts)] - face.netPts[edge]);
+    const otherNetEdge = normalize(other.netPts[(peer.edge + 1) % size(other.netPts)] - other.netPts[peer.edge]);
+    // Tapered developments can be fan-shaped: the two edge copies then do not
+    // share one horizontal datum without changing the panels. Keep each row
+    // horizontal locally; pair exact levels only for parallel edge copies.
+    if (norm(cross(ownNetEdge, otherNetEdge)) > 1e-6)
+        return (interval[0] + interval[1]) / 2;
+    const p0 = other.pts[peer.edge];
+    const p1 = other.pts[(peer.edge + 1) % size(other.pts)];
+    const ev = normalize(p1 - p0);
+    const u = kEdgeInward(other.pts, peer.edge, other.c);
+    const radius = d.seamEyeletW / mm / 2;
+    const target = kEyeletTargetDepth(other, peer.edge, peer.gaps[peer.edge], d);
+    var otherInterval = [radius + d.clearance / mm, norm(p1 - p0) - radius - d.clearance / mm];
+    const row = kConnectionRowDirection(other);
+    for (var i = 0; i < d.seamEyeletCount; i += 1)
+    {
+        const delta = (i - (d.seamEyeletCount - 1) / 2) * d.connectionHolePitch / mm * row;
+        if (d.projectEyeletTabs)
+            otherInterval = kClipAttachment(otherInterval, other, peer.edge, peer.gaps, p0 + dot(delta, ev) * ev, ev, u,
+                peer.gaps[peer.edge], d.overlap / mm, radius);
+        else
+            otherInterval = kClipAnchor(otherInterval, other, peer.gaps, p0, ev, target * u + delta,
+                radius + max(d.minWall / mm, d.roundPanels ? d.cornerR / mm : 0));
+    }
+    const specs = [{ "face" : face, "edge" : edge, "interval" : interval },
+                   { "face" : other, "edge" : peer.edge, "interval" : otherInterval }];
+    // Compare both feasible row-height bands in the unrotated print datum.
+    const ownGap = d.projectEyeletTabs ? 0 : peer.ownGap;
+    var bands = [];
+    for (var i = 0; i < 2; i += 1)
+    {
+        const entry = specs[i];
+        const pts = entry.face.netPts;
+        const dir = normalize(pts[(entry.edge + 1) % size(pts)] - pts[entry.edge]);
+        const inward = kEdgeInward(pts, entry.edge, kCentroid(pts));
+        const offset = i == 0 ? kEyeletTargetDepth(face, edge, ownGap, d) : target;
+        const y0 = pts[entry.edge][1] + offset * inward[1];
+        const ya = y0 + entry.interval[0] * dir[1];
+        const yb = y0 + entry.interval[1] * dir[1];
+        bands = append(bands, { "lo" : min(ya, yb), "hi" : max(ya, yb), "origin" : y0, "slope" : dir[1] });
+    }
+    const lo = max(bands[0].lo, bands[1].lo);
+    const hi = min(bands[0].hi, bands[1].hi);
+    if (hi < lo - 1e-6)
+        throw regenError("The paired seam rows cannot share a horizontal datum inside both panels. Reduce hole count/inset or enlarge the cell; legacy layout is available.", ["seamEyeletCount", "seamEyeletDepth", "connectionLayout"]);
+    if (abs(bands[0].slope) < 1e-8)
+        return (interval[0] + interval[1]) / 2;
+    return ((lo + hi) / 2 - bands[0].origin) / bands[0].slope;
+}
+
+function kEyeletTargetDepth(face is map, edge is number, gap is number, d is map) returns number
+{
+    const radius = d.seamEyeletW / millimeter / 2;
+    if (d.projectEyeletTabs)
+        return -d.seamEyeletDepth / millimeter + radius;
+    var inset = d.seamEyeletDepth / millimeter;
+    if (d.connectionLayout == KConnectionLayout.HORIZONTAL)
+    {
+        const u = kEdgeInward(face.pts, edge, face.c);
+        const extent = (d.seamEyeletCount - 1) / 2 * d.connectionHolePitch / millimeter;
+        const ligament = max(d.minWall / millimeter, d.roundPanels ? d.cornerR / millimeter : 0);
+        inset = max(inset, radius + ligament + extent * abs(dot(kConnectionRowDirection(face), u)));
+    }
+    return gap + inset;
 }

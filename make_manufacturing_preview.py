@@ -32,12 +32,12 @@ def main():
     ax.set_facecolor('#f6f8fa')
     draw(ax, pla, '#7ca6db', '#244b70')
     draw(ax, tpu, '#64b68e', '#1d6345')
-    ax.add_patch(Rectangle((-4, 0), 8, 1.6, fill=False, edgecolor='#e59025', linestyle='--', linewidth=1.8))
+    ax.add_patch(Rectangle((-1.5*gap, thickness-.4), 3*gap, .5, fill=False, edgecolor='#e59025', linestyle='--', linewidth=1.8))
     ax.annotate('Rigid layer captures the wider TPU heads', xy=(-3.9, .6), xytext=(-6.8, 2.0),
                 arrowprops={'arrowstyle': '->', 'color': '#244b70'}, color='#244b70')
     ax.annotate('Flexible web', xy=(0, 1), xytext=(-.5, 2.0),
                 arrowprops={'arrowstyle': '->', 'color': '#1d6345'}, color='#1d6345')
-    ax.text(2.8, 2.0, 'Dashed orange: slicer-only volume', color='#a9600e')
+    ax.text(2.8, 2.0, 'Dashed orange: thin slicer ribbon\n1.5 × actual free gap', color='#a9600e')
     ax.set(xlim=(-7.3, 7.3), ylim=(-.4, 2.6), xlabel='Distance across crease (mm)', ylabel='Thickness (mm)')
     ax.set_aspect('equal')
     ax.spines[['top', 'right']].set_visible(False)

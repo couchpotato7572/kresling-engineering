@@ -6,7 +6,7 @@ This is prototype geometry. The source has not been compiled or regenerated in O
 
 ## Body roles and construction modes
 
-Choose **Manufacturing and Connections → Manufacturing Mode → Material construction**:
+Choose **Generation Mode → Material construction**. **Crease modifiers** in the same group independently selects Automatic, Enabled or Disabled:
 
 | Mode | Printable output | Optional nonprinting output |
 |---|---|---|
@@ -58,18 +58,26 @@ The generation fails if an anchor does not fit, reaches a lacing, ventilation or
 
 ## Slicer modifiers
 
-Enable **Generate slicer-only modifiers**, or select the mode that includes them. A modifier is a separate rectangular prism, oriented along the crease and its inward normal bisector. It is never included in a structural union, a material subtraction tool, or the printable connectivity count.
+![Independent reference of the refined net and dovetail profile](refinement_preview.png)
+
+Choose **Generation Mode → Crease modifiers → Enabled**, or leave it Automatic with **PLA + TPU + slicer modifiers**. Disabled suppresses them even in that manufacturing mode. Automatic also honors the hidden legacy enable flag on saved features. Modifier settings appear only when generation is active.
+
+A modifier is a thin ribbon following both adjoining panel planes and the selected hinge side. A narrow spine spans the free gap; its wings intersect the intended panels. It stays separate from structural unions, TPU subtraction tools and printable connectivity counts.
 
 | Control | Default | Definition |
 |---|---:|---|
-| Modifier crease types | All | Same fold/type filters as TPU, applied independently. |
-| Width across crease | 8 mm | Full transverse width; centered on the crease when offset is zero. |
-| Height above inner reference | 0.4 mm | Extent above the intersection of the two inner reference planes. In a net with unequal panel thickness, the mean inner height is used. |
-| Penetration from inner reference | 1.2 mm | Downward extent from that reference. Controls the portion of the panel affected; it is not a material thickness. |
-| Offset from centerline | 0 mm | Signed transverse shift toward crease side A when positive. Side A is determined by the feature's adjacency order. |
-| Output only modifiers for separate export | Off | Deletes the printable parts from that feature instance after all validation, leaving only modifier bodies and optional guide sketches. Use a second instance/configuration with identical geometry settings. |
+| Modifier crease types | All | Fold/type filter, independent of the TPU filter. |
+| Ribbon width input | Multiplier | Choose relative width or the retained absolute-width input. |
+| Width multiplier | 1.5 | Multiplies `gA + gB`, the actual sum of computed panel setbacks, including thickness clearance. This free-gap width excludes overlap and captive-anchor reach. |
+| Modifier width across crease | 8 mm | Alternative absolute total width, shown only in Absolute mode. It must cover the gap and enter both panels. |
+| Seam coverage | Full crease length | Runs endpoint to endpoint; Printed hinge interval instead uses the validated shortened web attachment interval. |
+| Start / end margin (inward) | 0 / 0 mm | Explicit setbacks from the chosen interval. No hidden half-width shortening remains. |
+| Modifier surface allowance | 0.1 mm | Extent outside the selected hinge-side panel surface. |
+| Modifier penetration from hinge side | 0.4 mm | Inward depth from that surface, capped at the wall thickness. This controls affected material, not physical material thickness. |
+| Modifier offset from centerline | 0 mm | Positive shifts width toward adjacency side A; both panel wings must retain positive overlap. |
+| Output only modifiers for separate export | Off | Deletes printable parts after validation. Use another instance/configuration with identical geometry parameters for material export. |
 
-The original hinge interval is shortened by an additional `max(end relief, half modifier width + absolute offset)` at each end. This keeps a wide modifier away from nearby third panels at crease vertices. A modifier must have at least 1 mm of remaining length, cover a finite band inside both panel footprints (a half-wall-width transverse inset and a positive penetration interval), have positive-volume intersection with both intended panels, and avoid unrelated panels. In tight or extreme folded designs, reduce width/offset or increase cell size. Modifiers can overlap their own hinge and can overlap other modifier volumes; they are intentionally not physical material.
+Wings are clipped to the actual inset panel footprints. Where needed, only the modifier is trimmed against unrelated panels, hinges or closure hardware. Validation requires one connected ribbon, positive-volume contact with both intended panels, a retained centerline at sampled stations and the requested axial endpoints. An interrupted ribbon is rejected instead of silently shortened. Wide/deep ribbons on tight folded geometries may require smaller dimensions, explicit margins or Printed hinge interval coverage. Modifier overlap with its own hinge is intentional; modifier bodies are not printable material.
 
 Modifier settings are limited to those the installed slicer exposes for a modifier. These bodies do not promise a particular infill direction, filament assignment, wall behavior, or unsupported Bambu option.
 
@@ -81,7 +89,7 @@ Modifier settings are limited to those the installed slicer exposes for a modifi
 
 An exact flat net has distant copies of its seam edge. A local hinge cannot connect those copies in the plane without spanning or crossing the existing net. The feature does not add that unintended bridge or claim that separate edges are connected.
 
-The supported closure is **post-print lacing through integrated rounded eyelets**:
+For **Longitudinal seam → Rounded eyelets for post-print lacing**:
 
 - Default inset eyelets place a reinforced hole within each seam-side panel. The full surrounding collar is united with its owner before the lacing hole is cut, so the underlying panel cannot fill the hole again.
 - Default eyelets follow the face transformations in both net and folded representations. They do not project into the opposite panel across a closed seam.
@@ -90,11 +98,42 @@ The supported closure is **post-print lacing through integrated rounded eyelets*
 
 | Eyelet control | Default | Meaning |
 |---|---:|---|
-| Eyelet width along edge | 5 mm | Collar diameter or projecting tab width. |
-| Eyelet center inset / tab extension | 5 mm | Distance from the trimmed edge to the inset collar center, or extension beyond the reference edge in projecting-tab mode. |
+| Collar diameter / tab width | 5 mm | Collar diameter or projecting tab width. |
+| Minimum collar inset / tab extension | 5 mm | Minimum center distance from the trimmed edge; increased automatically to contain a horizontal row. In projecting mode, extension beyond the reference edge. |
 | Lacing hole diameter | 2 mm | Must preserve the minimum printable wall radially. |
-| Eyelets on each side of a connection | 1 | Staggered stations in a canonical edge direction, with checked spacing and attachment intervals. |
+| Eyelets on each side of a connection | 1 | Number of holes in each row. Larger counts require adequate panel space. |
+| Connection hole layout | Horizontal rows | Centers follow +X of the unrotated net; the legacy along-edge staggered layout remains selectable. |
+| Horizontal hole spacing | 6 mm | Center spacing; must exceed collar width plus clearance. |
 | Eyelet collar height above panel | 0.4 mm | Extra height on the inner side; zero makes a simple flush hole. Raised collars need padding/contact clearance if used in a splint prototype. |
+
+Every bore remains **normal to its owning panel**, as requested. Hole axes are not rotated sideways. The horizontal row direction is defined in the unrotated XY net and transported rigidly into the folded panels. Parallel seam copies share a row-height datum when both panel footprints permit it. Tapered nets fan out: nonparallel seam copies retain separate horizontal rows instead of forcing holes outside their panels. Section connections also use local horizontal rows. The rest of the assembly is not rotated to conceal an alignment issue; the explicit print-bed rotation still rotates the complete pattern together.
+
+Use Onshape **Top** to inspect circular holes in an XY net. **Front** projects an XY net edge-on, so horizontal centers are visible there but circular openings are not. A two-hole row using 5 mm collars at 6 mm spacing fits the checked 80 mm diameter example; the default 60 mm tube with that two-hole pattern cannot share a paired row datum and is rejected. One hole per side works at the default size.
+
+### Mating dovetail loop closure
+
+Choose **Longitudinal seam → Mating dovetail loop closure**. A rounded male key and complementary open-ended receiver are constructed in one common folded seam frame, then each half is rigidly transported with its owner into the net. This preserves the intended mating relationship rather than making independently oriented decorative tabs. No bridge crosses the flat net.
+
+| Control | Default | Meaning |
+|---|---:|---|
+| Rail layout | Segmented | Discrete key/receiver pairs, or one continuous rail over the valid attachment interval. |
+| Joint material | Rigid | Both halves join rigid panels; TPU-assisted male requires a PLA/TPU mode and uses captive through-anchors. |
+| Head width | 4 mm | Widest male cross-section. |
+| Engagement depth | 2 mm | Distance from narrow throat to wide head. |
+| Dovetail taper angle | 15° | Neck width = head width minus twice depth times tangent of angle. |
+| Receiver wall thickness | 1 mm | Must meet the minimum printable wall. |
+| Mating clearance per side | 0.2 mm | Outward offset of the male profile, including matching rounded corners. Requires printer-specific fit calibration. |
+| Corner radius | 0.3 mm | Analytic circular arcs on the key and receiver profiles. |
+| Segments per cell seam | 2 | Segmented layout only; constrained by the available panel attachment interval. |
+| Key length along seam | 6 mm | Each segmented male's axial length. |
+| Minimum gap between keys | 2 mm | Additional separation beyond each receiver's occupied length. |
+| Chamfer the insertion end | Off | Optional male entry-end chamfer. |
+| Lead-in chamfer | 0.2 mm | Shown when enabled; must be smaller than the corner radius and one-third of receiver wall thickness. |
+| One-way axial end stop | Off | Stops further insertion in one direction. Reverse withdrawal remains possible; this is not a bidirectional lock or tested retention mechanism. |
+
+The receiver cavity is cut after joining its support, so support material cannot refill the socket. Guards check neck width, remaining rounded undercut, owner attachment, separate solid connectivity, collisions with panels/hinges/other joints, and three sampled axial key-entry positions. These are local fit samples, not a compliant folding or whole-assembly insertion simulation. Continuous rails and multiple cells can constrain assembly order; validate the actual insertion path in a physical coupon.
+
+The rails sit inward on local raised supports to clear the wall thickness. They add internal protrusions and may need print support even in Net mode. Check underside bridges, support removal, skin/padding clearance and loads. A TPU male provides geometric capture at its owner; its deformation, pull-out resistance and long-term retention remain unmeasured. The checked combined TPU-assisted example uses **one segment** per seam; larger counts may conflict with neighboring captive anchors and should be tested separately. No snap action or clinical suitability is claimed.
 
 For **Independent single-material modules**, all inter-cell webs are omitted, while each cell's own facets remain connected. Select a section connection:
 
@@ -123,9 +162,9 @@ The dimensions above are theoretical CAD defaults. Print a single captured hinge
 
 ## Scope and deferred mechanisms
 
-Implemented: solid single-material output, disjoint PLA/TPU partitions, continuous or segmented captive hinges, round/rectangular through-keys, type/ID selections, slicer-only volumes, inset lacing eyelets, net-only round tabs, and independent laced modules. Existing taper/offset/custom-cell controls are retained with validation.
+Implemented: solid single-material output, disjoint PLA/TPU partitions, continuous or segmented captive hinges, round/rectangular through-keys, type/ID selections, slicer-only volumes, horizontal normal-axis lacing rows, net-only round tabs, rounded segmented/continuous dovetail loop closures, and independent laced modules. Existing taper/offset/custom-cell controls are retained with validation.
 
-Not implemented or validated: snap-fit insertion/retention, sliding dovetails, mushroom snap hardware, continuous interlocking channels, pin-and-socket section hardware, permanent flat seam bridges, a generated TPU seam cord, modular multi-material cells in one feature, toolpath-level infill orientation, or automatic native Bambu 3MF authoring. They are not selectable placeholder modes. Captive through-keys and post-print lacing are the practical alternatives provided here. These need physical calibration and cannot establish safe splint loading, clinical use, or a collision-free compliant folding path.
+Not implemented or validated: snap-fit insertion/retention, mushroom snap hardware, pin-and-socket section hardware, permanent flat seam bridges, a generated TPU seam cord, modular multi-material cells in one feature, toolpath-level infill orientation, or automatic native Bambu 3MF authoring. They are not selectable placeholder modes. Captive through-keys and post-print lacing are the practical alternatives provided here. These need physical calibration and cannot establish safe splint loading, clinical use, or a collision-free compliant folding path.
 
 ## Example settings
 
@@ -135,7 +174,9 @@ Keep common geometry at six sides, 60 mm diameter, 30 mm per cell and 75° twist
 |---|---|---|
 | Captured one-cell net | PLA panels + TPU hinges; All; Continuous; round rivets; two anchors per side | 12 PLA parts, 11 TPU strips, 44 captive anchors |
 | Segmented one-cell net | Same, with Individual anchored segments; length 4 mm | 12 PLA parts, 22 TPU segments |
-| Crease infill study | PLA + TPU + slicer modifiers; width 8 mm, height 0.4 mm, penetration 1.2 mm | Above material parts plus 11 slicer-only bodies |
+| Crease infill study | PLA + TPU + slicer modifiers; width multiplier 1.5, surface allowance 0.1 mm, penetration 0.4 mm | Above material parts plus 11 slicer-only bodies |
+| Dovetail loop net | Default one-cell geometry; mating dovetail; rigid; two 6 mm segments | Integrated male/receiver pairs with intentional sliding clearance |
+| Horizontal lacing study | 80 mm diameter; lacing; two eyelets per side; horizontal spacing 6 mm | Two holes in each horizontal seam-side row, with normal bore axes |
 | Modular laced pair | Two cells; Independent single-material modules; section lacing; inset eyelets; Spaced | Two printable modules with twelve integrated section eyelets |
 
 These are independent-mesh expectations for the stated configurations, not observed Onshape part counts. Material-island counts change when TPU filters leave rigid connecting webs.

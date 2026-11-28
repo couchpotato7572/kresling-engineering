@@ -9,7 +9,7 @@ A parametric FeatureScript generator for folded Kresling design states and match
 1. Open [kreslingEngineering.fs](kreslingEngineering.fs) and copy the **entire file**.
 2. Create a Feature Studio in your Onshape document.
 3. Click inside its code editor, select all starter text, and replace it with the copied source. The single `FeatureScript 2144;` header must be on line 1.
-4. Click **Commit**, then add **Kresling Engineering** to a Part Studio through the custom-feature menu.
+4. Click **Commit**, then add **Codex Kresling V2** to a Part Studio through the custom-feature menu.
 5. Choose **Folded solid** or **Printable net**. Keep all other settings identical when generating a matching pair.
 
 Start with the defaults: six sides, 60 mm circumdiameter, one 30 mm cell, 75° twist, 1.2 mm panels, and 0.4 mm hinge webs.
@@ -23,8 +23,11 @@ Start with the defaults: six sides, 60 mm circumdiameter, one 30 mm cell, 75° t
 - Optional hinged end plates, local holes, ventilation, reinforcement islands, rounded panel corners, and slotted attachment tabs.
 - Checks for collapsed insets, overlapping nets, unintended component contacts, and disconnected results.
 - Separate PLA/TPU solids with captive through-rivet or beam-key anchors, fold-specific web dimensions, and continuous/segmented strips.
-- Independent slicer modifier volumes with fold/type/individual-crease filters and a modifiers-only export option.
-- Integrated lacing eyelets, optional net-only projecting tabs, and independent laced modules with assembled/spaced layouts.
+- Slim face-following slicer ribbons, default width 1.5 times the actual crease gap, full-length coverage, independent enable/disable and export filters.
+- Horizontal lacing-hole rows with bores normal to their panels, optional net-only projecting tabs, and independent laced modules.
+- Rounded mating dovetail loop closures in segmented or continuous layouts, with adjustable clearance and optional TPU-assisted male keys.
+
+![Independent reference of the revised ribbons, hole rows and mating dovetail](refinement_preview.png)
 
 See [Manufacturing and Bambu Studio workflows](MANUFACTURING.md) for material roles, all new controls, export instructions, supported connections and calibration limits.
 
@@ -43,7 +46,7 @@ python -m venv .venv
 .venv/bin/pip install -r requirements-validation.txt
 .venv/bin/python check_featurescript_source.py
 .venv/bin/python verify_geometry.py
-.venv/bin/python -m unittest verify_manufacturing -v
+.venv/bin/python -m unittest verify_manufacturing verify_refinements -v
 .venv/bin/python make_preview.py
 ```
 
@@ -53,6 +56,6 @@ On Windows, use `.venv\Scripts\python.exe` and `.venv\Scripts\pip.exe`. The veri
 
 The GitHub Actions workflow runs source guards and independent mesh checks on pull requests. It does not compile FeatureScript in Onshape.
 
-Compression changes the designed panel dimensions; it does not simulate a single fixed net folding continuously. Panel dimensions unfold exactly, while finite-thickness hinge bend allowances remain unsolved. Some tapered or asymmetric connections need relief cuts. Locking mechanisms and transitions between different side counts require separate components.
+Compression changes the designed panel dimensions; it does not simulate a single fixed net folding continuously. Panel dimensions unfold exactly, while finite-thickness hinge bend allowances remain unsolved. Some tapered or asymmetric connections need relief cuts. Bidirectional locking and transitions between different side counts require separate development; the optional dovetail end stop limits insertion in one direction.
 
 This geometry is intended for engineering prototypes. CAD and mesh checks do not establish fatigue life, load capacity, or medical suitability. See the guide for the physical testing needed before splint-related use.
