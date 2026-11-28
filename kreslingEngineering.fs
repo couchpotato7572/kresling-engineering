@@ -1,5 +1,6 @@
 FeatureScript 2144;
 import(path : "onshape/std/common.fs", version : "2144.0");
+import(path : "onshape/std/chamfertype.gen.fs", version : "2144.0");
 
 // Exact triangle cut nets and thick-panel design states. See ENGINEERING_GUIDE.md.
 // All internal geometry uses unitless millimetres.

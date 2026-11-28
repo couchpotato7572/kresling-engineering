@@ -83,7 +83,7 @@ No claim is made that a valid mesh proves a valid Onshape B-rep, a printable hin
 7. Change side count and cell count, turn alternation on/off, change seam, switch profiles, and return to defaults. Reconfirm regeneration and identity of this feature's own result without modifying pre-existing parts.
 8. Export only the intended solid and inspect it in the target slicer for manifold status, wall generation, layer count, bridging and support. Print and cycle a coupon before extending the structure.
 
-Source SHA-256 (current source): `e80e2389019c18513aac42b1ea1c276617b9d9533b371c87e47ff48bdb8cb77d`.
+Source SHA-256 (current source): `3a26c32868d3c25525d98643d439ea448fc2eb5adfff58e42f63ae335f767506`.
 
 ## Follow-up from user-provided Onshape compiler diagnostics
 
@@ -139,3 +139,7 @@ Before accepting this update in Onshape, compile the entire file, regenerate the
 ## Compiler feedback: reserved local name `box`
 
 The user reported parser errors at lines 2040 and 2042. The modifier bounding-box result used `const box`, but `box` is a FeatureScript keyword. It is now named `ribbonBounds` at its declaration and both uses. This is a name-only correction; geometry and parameter behavior are unchanged. The source scan now rejects `const box` and `var box`; an intentionally broken copy confirmed that this guard catches the reported error. The corrected source scan and whitespace checks pass. Full Onshape recompilation remains pending; these guards are not a compiler.
+
+## Compiler feedback: missing `ChamferType` import
+
+The user reported `Variable ChamferType not found` at the optional lead-in chamfer. The enum and `EQUAL_OFFSETS` value are documented, but `common.fs` does not expose this enum to the Feature Studio. The source now explicitly imports `onshape/std/chamfertype.gen.fs` at version `2144.0`, alongside the existing pinned common import. The official [enum documentation](https://cad.onshape.com/FsDoc/library.html#module-chamfertype.gen.fs) and `opChamfer` argument schema were checked. The source guard now requires both pinned imports; a copy with the enum import removed is rejected. This changes symbol availability, not geometry. Source and Python syntax checks pass; actual Onshape recompilation remains pending.

@@ -6,9 +6,9 @@ import re
 
 def check(path=Path(__file__).with_name('kreslingEngineering.fs')):
     source = path.read_text()
-    assert source.startswith('FeatureScript 2144;\nimport(path : "onshape/std/common.fs", version : "2144.0");\n')
+    assert source.startswith('FeatureScript 2144;\nimport(path : "onshape/std/common.fs", version : "2144.0");\nimport(path : "onshape/std/chamfertype.gen.fs", version : "2144.0");\n'), 'Missing or mismatched pinned standard-library imports'
     assert len(re.findall(r'^FeatureScript\s+\d+;', source, re.M)) == 1
-    assert len(re.findall(r'^import\(', source, re.M)) == 1
+    assert len(re.findall(r'^import\(', source, re.M)) == 2
     precondition = source.split('precondition\n{', 1)[1].split('\n}\n{', 1)[0]
     scalar = re.findall(r'\bis(?:Length|Angle|Integer|Real)\s*\(\s*\w+\.(\w+)\s*,', precondition)
     typed = re.findall(r'\b\w+\.(\w+)\s+is\s+\w+\s*;', precondition)
