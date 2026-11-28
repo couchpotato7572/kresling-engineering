@@ -2037,9 +2037,9 @@ function kModifier(context is Context, id is Id, spec is map, panelA is Query, p
     for (var fraction in [0.001, 0.25, 0.5, 0.75, 0.999])
         if (size(evaluateQuery(context, qContainsPoint(ribbon, (middle + fraction * spec.length * spec.ev) * mm))) == 0)
             throw regenError("An unrelated panel cuts across the ribbon centerline. Adjust the design or use printed-hinge coverage.", ["modifierCoverage", "modifierDepth"]);
-    const box = evBox3d(context, { "topology" : ribbon,
+    const ribbonBounds = evBox3d(context, { "topology" : ribbon,
         "cSys" : coordSystem(p * mm, spec.ev, a.n), "tight" : true });
-    if (abs(box.minCorner[0] / mm) > 1e-5 || abs(box.maxCorner[0] / mm - spec.length) > 1e-5)
+    if (abs(ribbonBounds.minCorner[0] / mm) > 1e-5 || abs(ribbonBounds.maxCorner[0] / mm - spec.length) > 1e-5)
         throw regenError("Modifier clipping lost an endpoint. Increase the explicit end margin or reduce depth.", ["modifierStartMargin", "modifierEndMargin"]);
     kNameBodies(context, ribbon, "MODIFIER_ONLY_NOT_PRINT__crease_" ~ spec.crease.manufacturingId, color(0.95, 0.55, 0.1), d);
     return ribbon;

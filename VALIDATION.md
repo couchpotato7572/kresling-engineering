@@ -83,7 +83,7 @@ No claim is made that a valid mesh proves a valid Onshape B-rep, a printable hin
 7. Change side count and cell count, turn alternation on/off, change seam, switch profiles, and return to defaults. Reconfirm regeneration and identity of this feature's own result without modifying pre-existing parts.
 8. Export only the intended solid and inspect it in the target slicer for manifold status, wall generation, layer count, bridging and support. Print and cycle a coupon before extending the structure.
 
-Source SHA-256 (current source): `134601f98939212951c63fb5e2ff2a25cf829f92ca1925cde4e4a2256c192c94`.
+Source SHA-256 (current source): `e80e2389019c18513aac42b1ea1c276617b9d9533b371c87e47ff48bdb8cb77d`.
 
 ## Follow-up from user-provided Onshape compiler diagnostics
 
@@ -135,3 +135,7 @@ These are independent NumPy/Shapely/Manifold calculations, not execution of Feat
 The two preview figures are independent calculations, not Onshape screenshots. `make_refinement_preview.py` reproduces the full-ribbon net, horizontal rows and mating cross-section. `make_manufacturing_preview.py` now shows the thinner modifier envelope.
 
 Before accepting this update in Onshape, compile the entire file, regenerate the example nets and folded states, inspect exact partitions and hole positions, and test both rigid and TPU-assisted closure options. Inspect a Front projection for row centers and Top view for the circular net bores. Exercise modifier Disabled while using the modifier manufacturing mode. Check continuous/segmented joints, the optional chamfer and end stop separately. The three local insertion samples do not establish an assembly path for a whole multi-cell structure. Raised dovetail supports require support/clearance checks, and fit, retention and fatigue require physical coupons. No physical test, clinical safety or completed Onshape recompilation is claimed.
+
+## Compiler feedback: reserved local name `box`
+
+The user reported parser errors at lines 2040 and 2042. The modifier bounding-box result used `const box`, but `box` is a FeatureScript keyword. It is now named `ribbonBounds` at its declaration and both uses. This is a name-only correction; geometry and parameter behavior are unchanged. The source scan now rejects `const box` and `var box`; an intentionally broken copy confirmed that this guard catches the reported error. The corrected source scan and whitespace checks pass. Full Onshape recompilation remains pending; these guards are not a compiler.

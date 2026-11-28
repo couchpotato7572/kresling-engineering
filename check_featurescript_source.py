@@ -15,6 +15,7 @@ def check(path=Path(__file__).with_name('kreslingEngineering.fs')):
     duplicates = [name for name, count in Counter(scalar + typed).items() if count > 1]
     assert not duplicates, f'Duplicate feature parameter IDs: {duplicates}'
     scrubbed = re.sub(r'//[^\n]*|"(?:\\.|[^"\\])*"', '', source)
+    assert not re.search(r'\b(?:const|var)\s+box\b', scrubbed), 'Reserved keyword box used as a variable name'
     assert not re.search(r'\.\s*(?:type|function|enum|import|export|const|var|if|else|for|return)\b', scrubbed), 'Reserved keyword after dot'
     stack = []
     pairs = {')': '(', ']': '[', '}': '{'}
