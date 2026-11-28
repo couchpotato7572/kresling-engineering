@@ -25,5 +25,5 @@ jobs:
         run: python check_featurescript_source.py
       - name: Verify existing geometry regression cases
         run: python verify_geometry.py
-      - name: Verify manufacturing solids and material partitioning
-        run: python -m unittest verify_manufacturing -v
+      - name: Verify manufacturing solids, seam refinements and material partitioning
+        run: python -m unittest verify_manufacturing verify_refinements -v

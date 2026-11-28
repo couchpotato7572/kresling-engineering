@@ -26,8 +26,10 @@ class Manufacturing:
     mountain_t: float = .4
     valley_t: float = .4
     modifier_width: float = 8
-    modifier_depth: float = 1.2
-    modifier_height: float = .4
+    modifier_ratio: float = 1.5
+    modifier_absolute: bool = False
+    modifier_depth: float = .4
+    modifier_height: float = .1
     modifier_offset: float = 0
 
 def rectangle(origin,x,y,x0,x1,y0,y1):
@@ -101,7 +103,7 @@ def selected(l,f,a,c):
     if a.selection=='section':return fa['cell']!=fb['cell'] and not(fa['cap'] or fb['cap'])
     return False
 
-def manufacture(c=v.Config(),a=Manufacturing(),net=True,modifiers=False):
+def manufacture(c=v.Config(),a=Manufacturing(),net=True,modifiers=False,closure=None):
     envelope=a.head/2*(math.sqrt(2) if a.key else 1)
     assert a.head>=a.shaft+.6,'positive anchor capture'
     assert a.embed>=envelope+a.ligament,'anchor engagement'
@@ -110,8 +112,16 @@ def manufacture(c=v.Config(),a=Manufacturing(),net=True,modifiers=False):
     assert not a.segmented or a.segment_length+c.clearance<a.pitch,'segment spacing'
     f,l,g=v.build(c)
     if net:f,_=v.unfold(f,l)
+    joint_parts=[]
+    if closure:
+        from verify_refinements import frames,closure_parts,Dovetail
+        f,l,g=frames(c,net)
+        for cr in adjacent_edges(f):
+            fa,fb=f[cr['a']],f[cr['b']]
+            if not(fa['cap'] or fb['cap']) and fa['cell']==fb['cell'] and abs(fa['order']-fb['order'])==2*c.n-1:
+                joint_parts.extend(closure_parts(c,f,g,cr,Dovetail(count=1 if closure=='tpu' else 2),assisted=closure=='tpu'))
     panels=[v.extrude(v.inset(face,gap),face['n'],face['t']).set_tolerance(MESH_TOLERANCE) for face,gap in zip(f,g)]
-    tpu=[];rigid_webs=[];mods=[];anchors=0
+    tpu=[part for part,_,flexible in joint_parts if flexible];rigid_webs=[];mods=[];anchors=0;web_records=[]
     for k,link in enumerate(l):
         fa,fb,p0,ev,ua,ub,ga,gb,interval=link_frame(c,f,g,link)
         flexible=selected(link,f,a,c);mountain=link['outer']!=c.invert;t=(a.mountain_t if mountain else a.valley_t) if flexible else c.hinge
@@ -140,29 +150,18 @@ def manufacture(c=v.Config(),a=Manufacturing(),net=True,modifiers=False):
                 if j in [link['a'],link['b']]:assert hit>1e-7,'missing panel engagement'
                 else:assert hit<1e-7,f'unrelated panel contact at crease {k+1}'
             for other in tpu+rigid_webs:assert vol(web^other)<1e-7,f'hinge/anchor contact at crease {k+1}'
+            for part,_,_ in joint_parts:assert vol(web^part)<1e-7,'joint blocks an anchored hinge'
             (tpu if flexible else rigid_webs).append(web)
-        if modifiers:
-            na,nb=fa['n'],fb['n'];normal=v.unit(na+nb);across=v.unit(np.cross(normal,ev))
-            if across@ua<0:across=-across
-            shift=(fa['t']+fb['t'])/2*normal
-            if abs(na@nb)<.999999:shift=v.offset(na,nb,fa['t'],fb['t'])
-            margin=max(c.relief,a.modifier_width/2+abs(a.modifier_offset))
-            length=interval[1]-interval[0]-2*margin
-            assert length>=1,'modifier endpoint clearance'
-            origin=p0+(interval[0]+margin)*ev+shift+a.modifier_offset*across
-            for face,u,gap in [(fa,ua,ga),(fb,ub,gb)]:
-                penetration=min(face['t'],a.modifier_depth)
-                for wf in [.5,1]:
-                    for df in [.25,.5]:
-                        point=p0+(interval[0]+margin)*ev+(gap+.4*wf)*u+(face['t']-penetration*df)*face['n']
-                        relative=point-origin
-                        assert abs(relative@across)<a.modifier_width/2-1e-6 and -a.modifier_depth+1e-6<relative@normal<a.modifier_height-1e-6,'insufficient modifier footprint'
-            poly=rectangle(origin,across,normal,-a.modifier_width/2,a.modifier_width/2,-a.modifier_depth,a.modifier_height)
-            mod=v.extrude(poly,ev,length)
-            assert vol(mod^panels[link['a']])>1e-7 and vol(mod^panels[link['b']])>1e-7,'modifier misses intended panel'
-            for j,panel in enumerate(panels):
-                if j not in [link['a'],link['b']]:assert vol(mod^panel)<1e-7,'modifier reaches unrelated panel'
+            web_records.append((k,web))
+    if modifiers:
+        from verify_refinements import ribbon
+        for i,link in enumerate(l):
+            mod,_=ribbon(c,f,g,link,panels,[w for k,w in web_records if k!=i]+[p for p,_,_ in joint_parts],ratio=a.modifier_ratio,
+                depth=a.modifier_depth,allowance=a.modifier_height,offset=a.modifier_offset,
+                absolute_width=a.modifier_width if a.modifier_absolute else None)
             mods.append(mod)
+    for part,owner,is_tpu in joint_parts:
+        if not is_tpu:panels[owner]=union([panels[owner],part])
     assert tpu,'no selected TPU creases'
     flexible=union(tpu);rigid=[]
     for panel in panels:

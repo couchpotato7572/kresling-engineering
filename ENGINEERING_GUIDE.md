@@ -268,7 +268,7 @@ This prototype geometry does not establish medical suitability or clinical safet
 | Guaranteed stable deployed state or locking | Not claimed. Design and validate a separate strap, latch, removable collar, or mechanical stop using measured loads. The input compression bounds do not implement stops. |
 | Different side counts along the structure | Not supported inside one feature. Use independent Kresling sections connected by a dedicated transition collar, triangulated adaptor, or soft connector. Such a collar must be designed around the mating rings; it is not inherently a foldable Kresling cell. |
 | Arbitrary overlapping exact nets | Rejected. Try another seam or split the print into separate cells with a connector. An automatic packing/cut-graph search is a separate extension. |
-| Seam closure | One longitudinal slit per cell remains. Optional inset lacing eyelets support cord closure after wrapping; optional protruding tabs are net-only assembly features. No permanent bridge crosses the flat net. |
+| Seam closure | One longitudinal slit per cell remains. Choose lacing eyelets or rounded mating dovetails for post-print closure; optional protruding lacing tabs are net-only. Dovetail clearances permit sliding and require fit/assembly validation. No permanent bridge crosses the flat net. |
 | Rigid end plates attached around the entire rim | Not in the matching flat net. The supplied caps are single-edge hinged flaps. A removable cap or separately assembled connector is the practical alternative. |
 | Reinforcement bands, padding channels, anatomical contact shell | Not generated. Design these around a validated interface/clearance envelope; islands and slotted tabs are the included integration primitives. |
 | Rounded hinge roots and perforation patterns | Not supplied. Panel outline fillets are included. Root geometry needs bend-allowance and fatigue development; holes in hinges require testing before adding a generator. |
@@ -284,3 +284,7 @@ The next useful engineering milestone is a one-cell material coupon with measure
 - [Modeling and operation identifiers](https://cad.onshape.com/FsDoc/modeling.html)
 
 API names and schemas were checked against these published references. This does not replace compiling against the pinned 2144 library in Onshape.
+
+## Manufacturing refinements
+
+See [MANUFACTURING.md](MANUFACTURING.md) for the Generation Mode material/modifier overrides, thin full-crease ribbons, horizontal normal-axis hole rows, and all dovetail controls. That reference also explains nonparallel tapered seam rows, raised rail supports and the unverified physical assembly path. Existing parameter IDs and the user-supplied **Codex Kresling V2** display name are retained.
